@@ -9,218 +9,84 @@ import {
   useState,
 } from "react";
 import Image from "next/image";
+import { flushSync } from "react-dom";
+import {
+  FaBookOpen,
+  FaCat,
+  FaGithub,
+  FaHistory,
+  FaHome,
+  FaInfoCircle,
+  FaListUl,
+  FaPause,
+  FaPlay,
+  FaRedoAlt,
+  FaVolumeMute,
+  FaVolumeUp,
+} from "react-icons/fa";
+import {
+  CAT_TYPES,
+  ENEMY_TYPES,
+  GAME_ASSET_URLS,
+  LEVELS,
+  getLevel,
+  type LevelId,
+} from "@/features/game/config";
+import {
+  GAME,
+  INITIAL_DECORATIONS,
+  chooseRicochetLane,
+  clamp,
+  createDecorations,
+  createGameModel,
+  type GameMode,
+  type GameModel,
+  type Phase,
+} from "@/features/game/domain/model";
+import {
+  createEmptyLevelProgress,
+  loadLevelProgress,
+  saveLevelProgress,
+  type LevelProgress,
+} from "@/features/game/infrastructure/progress-storage";
+import {
+  BackButton,
+  CornerDecorations,
+  GameWordmark,
+  MatchupPreview,
+  VersusArtwork,
+} from "@/features/game/components/GameBrand";
 
-const GAME = {
-  lanes: 5,
-  ballSpeed: 39,
-  ballLaneSpeed: 4.5,
-  cooldown: 0.62,
-  homeLine: 18.5,
-} as const;
+type Screen =
+  | "loading"
+  | "main-menu"
+  | "level-select"
+  | "level-briefing"
+  | "about"
+  | "changelog"
+  | "bestiary"
+  | "cat-catalog"
+  | "enemy-catalog"
+  | "game";
 
-type LevelConfig = {
-  id: `1-${number}`;
-  name: string;
-  description: string;
-  difficulty: 1 | 2 | 3 | 4 | 5;
-  totalEnemies: number;
-  enemySpeed: number;
-  huaSkins: readonly (1 | 2)[];
+type ViewTransitionDocument = Document & {
+  startViewTransition?: (update: () => void) => { finished: Promise<void> };
 };
 
-/**
- * 所有关卡的展示信息与游戏参数集中维护，选关页和游戏逻辑共用同一份数据，
- * 避免界面文案、敌人数量与实际难度分别散落在组件中。
- */
-const LEVELS = [
-  { id: "1-1", name: "猫窝前院", description: "初次迎战", difficulty: 1, totalEnemies: 18, enemySpeed: 3.6, huaSkins: [1, 2, 1] },
-  { id: "1-2", name: "客厅防线", description: "快速来袭", difficulty: 2, totalEnemies: 20, enemySpeed: 3.85, huaSkins: [2, 1, 2] },
-  { id: "1-3", name: "走廊追击", description: "连续夹击", difficulty: 3, totalEnemies: 22, enemySpeed: 4.1, huaSkins: [1, 2, 1] },
-  { id: "1-4", name: "阳台乱斗", description: "高速攻防", difficulty: 4, totalEnemies: 24, enemySpeed: 4.35, huaSkins: [2, 1, 2] },
-  { id: "1-5", name: "终极守卫", description: "路卡总攻", difficulty: 5, totalEnemies: 26, enemySpeed: 4.6, huaSkins: [1, 2, 1] },
-] as const satisfies readonly LevelConfig[];
-
-type LevelId = (typeof LEVELS)[number]["id"];
-type LevelProgress = Record<LevelId, { bestScore: number; completed: boolean }>;
-
-const LEVEL_PROGRESS_STORAGE_KEY = "hua-vs-luca-level-progress-v1";
-
-function createEmptyLevelProgress(): LevelProgress {
-  return Object.fromEntries(
-    LEVELS.map((level) => [level.id, { bestScore: 0, completed: false }]),
-  ) as LevelProgress;
-}
-
-function getLevel(levelId: LevelId): LevelConfig {
-  return LEVELS.find((level) => level.id === levelId) ?? LEVELS[0];
-}
-
-const GAME_ASSET_URLS = [
-  "/assets/hua-bowl-1.png",
-  "/assets/hua-bowl-2.png",
-  "/assets/luca-head.png",
-  "/assets/scratcher-house.png",
-  "/assets/treat.png",
+const LOADING_MESSAGES = [
+  "- 花花正在睡觉 -",
+  "- 花花正在跑酷 -",
+  "- 花花正在玩玩具 -",
+  "- 花花正在咬路卡 -",
+  "- 花花正在发呆 -",
 ] as const;
 
-type Phase = "menu" | "playing" | "paused" | "victory" | "defeat";
-type Screen = "loading" | "main-menu" | "level-select" | "game";
-
-type Enemy = {
-  id: number;
-  lane: number;
-  x: number;
-  spawnAt: number;
-  spawned: boolean;
-  defeated: boolean;
-  variant: number;
-};
-
-type Ball = {
-  id: number;
-  lane: number;
-  targetLane: number;
-  x: number;
-  skin: 1 | 2;
-  hitIds: number[];
-};
-
-type HitEffect = {
-  id: number;
-  lane: number;
-  x: number;
-  label: string;
-  expiresAt: number;
-};
-
-type GameModel = {
-  levelId: LevelId;
-  phase: Phase;
-  elapsed: number;
-  score: number;
-  combo: number;
-  bestCombo: number;
-  defeated: number;
-  shots: number;
-  nextShotAt: number;
-  lastHitAt: number;
-  enemies: Enemy[];
-  balls: Ball[];
-  effects: HitEffect[];
-};
-
-type Decoration = {
-  id: number;
-  x: number;
-  y: number;
-  rotation: number;
-  scale: number;
-};
-
-const initialDecorations: Decoration[] = [
-  { id: 1, x: 8, y: 10, rotation: -12, scale: 0.92 },
-  { id: 2, x: 35, y: 5, rotation: 8, scale: 1.03 },
-  { id: 3, x: 62, y: 14, rotation: -4, scale: 0.88 },
-  { id: 4, x: 18, y: 43, rotation: 11, scale: 0.96 },
-  { id: 5, x: 49, y: 47, rotation: -9, scale: 1.05 },
-  { id: 6, x: 72, y: 37, rotation: 5, scale: 0.86 },
-];
-
-function clamp(value: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, value));
-}
-
-/**
- * 每局按当前关卡配置生成敌人轨道与出现时间，并限制同一轨道连续出现，
- * 保证不同难度使用独立敌人总量的同时，保留弹射路线的可读性。
- */
-function createEnemySchedule(level: LevelConfig): Enemy[] {
-  let previousLane = -1;
-  let repeated = 0;
-
-  return Array.from({ length: level.totalEnemies }, (_, index) => {
-    let lane = Math.floor(Math.random() * GAME.lanes);
-
-    if (lane === previousLane) repeated += 1;
-    else repeated = 0;
-
-    if (repeated > 1) {
-      lane = (lane + 1 + Math.floor(Math.random() * (GAME.lanes - 1))) % GAME.lanes;
-      repeated = 0;
-    }
-
-    previousLane = lane;
-
-    return {
-      id: index + 1,
-      lane,
-      x: 103 + (index % 3) * 2.2,
-      spawnAt: 0.75 + index * 1.08 + Math.random() * 0.32,
-      spawned: false,
-      defeated: false,
-      variant: index % 3,
-    };
-  });
-}
-
-function createModel(level: LevelConfig = LEVELS[0], phase: Phase = "menu"): GameModel {
-  return {
-    levelId: level.id as LevelId,
-    phase,
-    elapsed: 0,
-    score: 0,
-    combo: 0,
-    bestCombo: 0,
-    defeated: 0,
-    shots: 0,
-    nextShotAt: 0,
-    lastHitAt: -10,
-    enemies: createEnemySchedule(level),
-    balls: [],
-    effects: [],
-  };
-}
-
-function createDecorations(): Decoration[] {
-  const count = Math.random() > 0.5 ? 6 : 5;
-  const clusteredSlots = [
-    { x: 29, y: 15 },
-    { x: 46, y: 9 },
-    { x: 62, y: 17 },
-    { x: 34, y: 39 },
-    { x: 51, y: 34 },
-    { x: 66, y: 42 },
-  ];
-
-  return clusteredSlots.slice(0, count).map((slot, index) => ({
-    id: index + 1,
-    x: slot.x + Math.random() * 3,
-    y: slot.y + Math.random() * 3,
-    rotation: -18 + Math.random() * 36,
-    scale: 0.9 + Math.random() * 0.16,
-  }));
-}
-
-function chooseRicochetLane(ball: Ball, enemies: Enemy[]) {
-  const currentLane = Math.round(ball.lane);
-  const liveTargets = enemies
-    .filter(
-      (enemy) =>
-        enemy.spawned &&
-        !enemy.defeated &&
-        enemy.x > ball.x + 2 &&
-        Math.abs(enemy.lane - currentLane) === 1,
-    )
-    .sort((a, b) => a.x - b.x);
-
-  if (liveTargets[0]) return liveTargets[0].lane;
-  if (currentLane === 0) return 1;
-  if (currentLane === GAME.lanes - 1) return GAME.lanes - 2;
-  return currentLane + (Math.random() > 0.5 ? 1 : -1);
+function formatCatalogNumber(index: number) {
+  return `No.${String(index + 1).padStart(3, "0")}`;
 }
 
 export default function HuaVsLucaGame() {
-  const [initialModel] = useState<GameModel>(() => createModel());
+  const [initialModel] = useState<GameModel>(() => createGameModel());
   const modelRef = useRef<GameModel>(initialModel);
   const frameRef = useRef<number | null>(null);
   const previousFrameRef = useRef<number | null>(null);
@@ -232,13 +98,28 @@ export default function HuaVsLucaGame() {
   const [snapshot, setSnapshot] = useState<GameModel>(initialModel);
   const [screen, setScreen] = useState<Screen>("loading");
   const [selectedLevelId, setSelectedLevelId] = useState<LevelId>(LEVELS[0].id);
+  const [briefingMode, setBriefingMode] = useState<GameMode>("level");
   const [selectedLane, setSelectedLane] = useState(2);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [levelProgress, setLevelProgress] = useState<LevelProgress>(createEmptyLevelProgress);
-  const [decorations, setDecorations] = useState<Decoration[]>(initialDecorations);
+  const [decorations, setDecorations] = useState(INITIAL_DECORATIONS);
   const [assetProgress, setAssetProgress] = useState(0);
   const [assetLoadFailed, setAssetLoadFailed] = useState(false);
   const [assetLoadAttempt, setAssetLoadAttempt] = useState(0);
+  const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
+
+  const navigateTo = useCallback((nextScreen: Screen) => {
+    const transitionDocument = document as ViewTransitionDocument;
+
+    if (!transitionDocument.startViewTransition) {
+      setScreen(nextScreen);
+      return;
+    }
+
+    transitionDocument.startViewTransition(() => {
+      flushSync(() => setScreen(nextScreen));
+    });
+  }, []);
 
   const sync = useCallback(() => {
     const model = modelRef.current;
@@ -290,32 +171,38 @@ export default function HuaVsLucaGame() {
     });
   }, []);
 
-  const startGame = useCallback((levelId: LevelId = selectedLevelId) => {
+  const startGame = useCallback((levelId: LevelId = selectedLevelId, mode: GameMode = "level") => {
     const level = getLevel(levelId);
-    modelRef.current = createModel(level, "playing");
+    modelRef.current = createGameModel(level, "playing", mode);
     previousFrameRef.current = null;
     syncAtRef.current = 0;
     setDecorations(createDecorations());
     setSelectedLevelId(levelId);
     setLane(2);
-    setScreen("game");
+    navigateTo("game");
     playSound("roll");
     sync();
-  }, [playSound, selectedLevelId, setLane, sync]);
+  }, [navigateTo, playSound, selectedLevelId, setLane, sync]);
 
   const goToMainMenu = useCallback(() => {
-    modelRef.current = createModel(getLevel(selectedLevelId), "menu");
+    modelRef.current = createGameModel(getLevel(selectedLevelId), "menu");
     previousFrameRef.current = null;
-    setScreen("main-menu");
+    navigateTo("main-menu");
     sync();
-  }, [selectedLevelId, sync]);
+  }, [navigateTo, selectedLevelId, sync]);
 
   const goToLevelSelect = useCallback(() => {
-    modelRef.current = createModel(getLevel(selectedLevelId), "menu");
+    modelRef.current = createGameModel(getLevel(selectedLevelId), "menu");
     previousFrameRef.current = null;
-    setScreen("level-select");
+    navigateTo("level-select");
     sync();
-  }, [selectedLevelId, sync]);
+  }, [navigateTo, selectedLevelId, sync]);
+
+  const openLevelBriefing = useCallback((levelId: LevelId, mode: GameMode = "level") => {
+    setSelectedLevelId(levelId);
+    setBriefingMode(mode);
+    navigateTo("level-briefing");
+  }, [navigateTo]);
 
   const togglePause = useCallback(() => {
     const model = modelRef.current;
@@ -336,14 +223,17 @@ export default function HuaVsLucaGame() {
     (lane = selectedLaneRef.current) => {
       const model = modelRef.current;
       if (model.phase !== "playing" || model.elapsed < model.nextShotAt) return;
+      const catTypeId = getLevel(model.levelId).catTypeIds[0];
+      const catType = CAT_TYPES[catTypeId];
 
       setLane(lane);
       model.balls.push({
         id: Date.now() + model.shots,
+        catTypeId,
         lane,
         targetLane: lane,
         x: 20.7,
-        skin: Math.random() > 0.5 ? 1 : 2,
+        asset: catType.projectileAssets[Math.floor(Math.random() * catType.projectileAssets.length)],
         hitIds: [],
       });
       model.shots += 1;
@@ -375,28 +265,11 @@ export default function HuaVsLucaGame() {
 
   useEffect(() => {
     const emptyProgress = createEmptyLevelProgress();
-    const legacyBestScore = Number(window.localStorage.getItem("hua-vs-luca-best") ?? 0);
-    const saved = window.localStorage.getItem(LEVEL_PROGRESS_STORAGE_KEY);
     const timer = window.setTimeout(() => {
       try {
-        const parsed = saved ? JSON.parse(saved) as Partial<LevelProgress> : {};
-        const restored = Object.fromEntries(
-          LEVELS.map((level) => {
-            const levelData = parsed[level.id];
-            const migratedBest = level.id === "1-1" && Number.isFinite(legacyBestScore)
-              ? legacyBestScore
-              : 0;
-            return [
-              level.id,
-              {
-                bestScore: Math.max(0, Number(levelData?.bestScore ?? migratedBest) || 0),
-                completed: Boolean(levelData?.completed),
-              },
-            ];
-          }),
-        ) as LevelProgress;
+        const restored = loadLevelProgress(window.localStorage);
         setLevelProgress(restored);
-        window.localStorage.setItem(LEVEL_PROGRESS_STORAGE_KEY, JSON.stringify(restored));
+        saveLevelProgress(window.localStorage, restored);
       } catch {
         setLevelProgress(emptyProgress);
       }
@@ -411,6 +284,9 @@ export default function HuaVsLucaGame() {
   useEffect(() => {
     let cancelled = false;
     let completed = 0;
+    const randomizeMessageTimer = window.setTimeout(() => {
+      setLoadingMessageIndex(Math.floor(Math.random() * LOADING_MESSAGES.length));
+    }, 0);
 
     const loadAsset = (src: string) =>
       new Promise<void>((resolve, reject) => {
@@ -434,7 +310,7 @@ export default function HuaVsLucaGame() {
 
     Promise.all(GAME_ASSET_URLS.map(loadAsset))
       .then(() => {
-        if (!cancelled) setScreen("main-menu");
+        if (!cancelled) navigateTo("main-menu");
       })
       .catch(() => {
         if (!cancelled) setAssetLoadFailed(true);
@@ -442,8 +318,22 @@ export default function HuaVsLucaGame() {
 
     return () => {
       cancelled = true;
+      window.clearTimeout(randomizeMessageTimer);
     };
-  }, [assetLoadAttempt]);
+  }, [assetLoadAttempt, navigateTo]);
+
+  useEffect(() => {
+    if (screen !== "loading" || assetLoadFailed) return;
+
+    const timer = window.setInterval(() => {
+      setLoadingMessageIndex((current) => {
+        const offset = 1 + Math.floor(Math.random() * (LOADING_MESSAGES.length - 1));
+        return (current + offset) % LOADING_MESSAGES.length;
+      });
+    }, 5000);
+
+    return () => window.clearInterval(timer);
+  }, [assetLoadFailed, screen]);
 
   const retryAssetLoad = useCallback(() => {
     setAssetProgress(0);
@@ -462,10 +352,25 @@ export default function HuaVsLucaGame() {
         const activeLevel = getLevel(model.levelId);
         model.elapsed += delta;
 
+        if (model.mode === "endless" && model.elapsed >= model.nextEndlessSpawnAt) {
+          model.enemies.push({
+            id: model.nextEnemyId,
+            typeId: activeLevel.enemyTypeIds[model.nextEnemyId % activeLevel.enemyTypeIds.length],
+            lane: Math.floor(Math.random() * GAME.lanes),
+            x: 103,
+            spawnAt: model.elapsed,
+            spawned: true,
+            defeated: false,
+          });
+          model.nextEnemyId += 1;
+          model.nextEndlessSpawnAt = model.elapsed + 0.72 + Math.random() * 0.28;
+        }
+
         for (const enemy of model.enemies) {
           if (!enemy.spawned && enemy.spawnAt <= model.elapsed) enemy.spawned = true;
           if (enemy.spawned && !enemy.defeated) {
-            enemy.x -= activeLevel.enemySpeed * delta * (1 + enemy.variant * 0.035);
+            const speedMultiplier = model.mode === "endless" ? GAME.endlessEnemySpeedMultiplier : 1;
+            enemy.x -= activeLevel.enemySpeed * speedMultiplier * delta;
           }
         }
 
@@ -506,10 +411,13 @@ export default function HuaVsLucaGame() {
         }
 
         model.balls = model.balls.filter((ball) => ball.x < 106);
+        if (model.mode === "endless") {
+          model.enemies = model.enemies.filter((enemy) => !enemy.defeated);
+        }
         model.effects = model.effects.filter((effect) => effect.expiresAt > model.elapsed);
         if (model.elapsed - model.lastHitAt > 1.45) model.combo = 0;
 
-        if (model.defeated >= activeLevel.totalEnemies) {
+        if (model.mode !== "endless" && model.defeated >= activeLevel.totalEnemies) {
           model.phase = "victory";
           setLevelProgress((current) => {
             const next = {
@@ -519,7 +427,7 @@ export default function HuaVsLucaGame() {
                 completed: true,
               },
             };
-            window.localStorage.setItem(LEVEL_PROGRESS_STORAGE_KEY, JSON.stringify(next));
+            saveLevelProgress(window.localStorage, next);
             return next;
           });
           playSound("win");
@@ -550,25 +458,44 @@ export default function HuaVsLucaGame() {
   const activeLevel = getLevel(snapshot.levelId);
   const liveEnemies = snapshot.enemies.filter((enemy) => enemy.spawned && !enemy.defeated);
   const progress = (snapshot.defeated / activeLevel.totalEnemies) * 100;
+  const displayedProgress = snapshot.mode === "endless" ? 0 : progress;
   const currentBestScore = levelProgress[snapshot.levelId].bestScore;
+  const selectedLevel = getLevel(selectedLevelId);
+  const selectedCatType = CAT_TYPES[selectedLevel.catTypeIds[0]];
+  const selectedEnemyType = ENEMY_TYPES[selectedLevel.enemyTypeIds[0]];
 
   return (
     <main className="page-shell">
       <div className="wall-doodle wall-doodle-one" aria-hidden="true">✦</div>
       <div className="wall-doodle wall-doodle-two" aria-hidden="true">=^･ω･^=</div>
+      {screen !== "loading" && (
+        <div className="persistent-corner-frame">
+          <CornerDecorations />
+        </div>
+      )}
+      {screen !== "loading" && (
+        <div className={`menu-corner-tabs${screen === "main-menu" ? " is-visible" : " is-hidden"}`}>
+          <button className="info-button" type="button" onClick={() => navigateTo("about")} aria-label="关于游戏">
+            <FaInfoCircle aria-hidden="true" size={24} />
+          </button>
+          <button className="info-button changelog-button" type="button" onClick={() => navigateTo("changelog")} aria-label="更新日志">
+            <FaHistory aria-hidden="true" size={23} />
+          </button>
+        </div>
+      )}
 
       {screen === "loading" && (
         <section className="game-cabinet loading-page" aria-live="polite" aria-busy={!assetLoadFailed}>
           <div className="loading-paper">
             <span className="pin pin-left" />
             <span className="pin pin-right" />
-            <p>{assetLoadFailed ? "资源加载失败" : "资源准备中"}</p>
-            <h1>{assetLoadFailed ? "图片没有到齐" : "稍等一下！"}</h1>
+            {assetLoadFailed && <p>资源加载失败</p>}
+            <h1>{assetLoadFailed ? "图片没有到齐" : "等一下!"}</h1>
             <div className="asset-progress" aria-label={`图片加载进度 ${Math.round(assetProgress * 100)}%`}>
               <span style={{ width: `${assetProgress * 100}%` }} />
             </div>
             <strong>{Math.round(assetProgress * 100)}%</strong>
-            <small>{assetLoadFailed ? "检查网络后重新加载" : "正在提前加载并解码全部游戏图片"}</small>
+            <small>{assetLoadFailed ? "检查网络后重新加载" : LOADING_MESSAGES[loadingMessageIndex]}</small>
             {assetLoadFailed && (
               <button className="primary-button is-khaki" type="button" onClick={retryAssetLoad}>
                 重新加载
@@ -583,38 +510,27 @@ export default function HuaVsLucaGame() {
           <div className="front-page-noise" aria-hidden="true" />
 
           <div className="front-page-layout">
-            <div className="front-art" aria-hidden="true">
-              <Image
-                className="front-hua"
-                src="/assets/hua-bowl-1.png"
-                alt=""
-                width={637}
-                height={900}
-                priority
-                unoptimized
-              />
-              <div className="front-versus">VS</div>
-              <div className="front-luca">
-                <Image src="/assets/luca-head.png" alt="" width={288} height={237} priority unoptimized />
-                <span />
-              </div>
-            </div>
+            <VersusArtwork />
 
             <div className="paper-card main-menu-card">
-              <span className="pin pin-left" />
-              <span className="pin pin-right" />
-              <h1><span>花花</span><em>VS</em><span>路卡</span></h1>
-              <p className="menu-tagline">滚动花花，弹飞路卡。</p>
+              <GameWordmark />
               <nav className="main-menu-actions" aria-label="主菜单操作">
                 <button className="primary-button" type="button" onClick={goToLevelSelect}>
-                  <span>▶</span> 开始游戏
+                  <FaPlay aria-hidden="true" size={22} /> 开始游戏
                 </button>
+                <div className="menu-secondary-row">
+                  <button className="menu-secondary-button endless-button" type="button" onClick={() => openLevelBriefing(LEVELS[0].id, "endless")}>
+                    <FaCat aria-hidden="true" size={25} /> 无尽模式
+                  </button>
+                  <button className="menu-secondary-button" type="button" onClick={() => navigateTo("bestiary")}>
+                    <FaBookOpen aria-hidden="true" size={23} /> 图鉴
+                  </button>
+                </div>
               </nav>
             </div>
           </div>
 
           <div className="front-page-meta">
-            <span>使用鼠标选择关卡 · 点击跑道发射花花</span>
             <strong>©2026 Anuluca</strong>
           </div>
         </section>
@@ -623,7 +539,7 @@ export default function HuaVsLucaGame() {
       {screen === "level-select" && (
         <section className="game-cabinet level-select-page" aria-label="选择关卡">
           <header className="screen-topbar level-topbar">
-            <button type="button" onClick={goToMainMenu} aria-label="返回主菜单">← 返回</button>
+            <BackButton onClick={goToMainMenu} />
             <strong>选择关卡</strong>
             <span aria-hidden="true" />
           </header>
@@ -633,52 +549,195 @@ export default function HuaVsLucaGame() {
               <span className="tape tape-one" />
               <span className="tape tape-two" />
               <p>第一章</p>
-              <h1>路卡来袭</h1>
+              <h1>魔丸降世</h1>
               <small>共 5 个关卡</small>
             </div>
 
             <div className="level-grid">
-              {LEVELS.map((level) => (
-                <button
-                  className={`level-card is-open${levelProgress[level.id].completed ? " is-completed" : ""}`}
-                  type="button"
-                  key={level.id}
-                  onClick={() => startGame(level.id)}
-                >
-                  <span className="level-number">{level.id}</span>
-                  <div className="level-avatar-stack" aria-hidden="true">
-                    {level.huaSkins.map((skin, index) => (
-                      <Image
-                        key={`${level.id}-${index}`}
-                        src={`/assets/hua-bowl-${skin}.png`}
-                        alt=""
-                        width={747}
-                        height={900}
-                        unoptimized
-                      />
-                    ))}
-                  </div>
-                  <strong>{level.name}</strong>
-                  <small>{level.description} · 最高分 {String(levelProgress[level.id].bestScore).padStart(5, "0")}</small>
-                  <div className="level-difficulty" aria-label={`难度 ${level.difficulty} 星`}>
-                    <span>难度</span>
-                    <div aria-hidden="true">
-                      {Array.from({ length: 5 }, (_, index) => (
-                        <Image
-                          className={index < level.difficulty ? "is-active" : ""}
-                          key={index}
-                          src="/assets/luca-head.png"
-                          alt=""
-                          width={288}
-                          height={237}
-                          unoptimized
-                        />
-                      ))}
+              {LEVELS.map((level, levelIndex) => {
+                const isOpen = levelIndex === 0;
+
+                return (
+                  <button
+                    className={`level-card ${isOpen ? "is-open" : "is-locked"}${levelProgress[level.id].completed ? " is-completed" : ""}`}
+                    type="button"
+                    key={level.id}
+                    onClick={isOpen ? () => openLevelBriefing(level.id) : undefined}
+                    disabled={!isOpen}
+                  >
+                    {isOpen ? (
+                      <>
+                        <span className="level-number">{level.id}</span>
+                        <MatchupPreview level={level} />
+                        <strong>{level.name}</strong>
+                        <small>最高分 {String(levelProgress[level.id].bestScore).padStart(5, "0")}</small>
+                        <div className="level-difficulty" aria-label={`难度 ${level.difficulty} 星`}>
+                          <span>难度</span>
+                          <div aria-hidden="true">
+                            {Array.from({ length: 5 }, (_, index) => (
+                              <Image
+                                className={index < level.difficulty ? "is-active" : ""}
+                                key={index}
+                                src="/assets/luca-head.png"
+                                alt=""
+                                width={288}
+                                height={237}
+                                unoptimized
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        {levelProgress[level.id].completed && <i className="completion-label">已完成</i>}
+                      </>
+                    ) : (
+                      <strong className="locked-sleep">路卡正在睡觉…</strong>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {screen === "level-briefing" && (
+        <section className="game-cabinet secondary-page briefing-page" aria-label="准备防守">
+          <header className="screen-topbar secondary-topbar">
+            <BackButton onClick={briefingMode === "endless" ? goToMainMenu : goToLevelSelect}>
+              {briefingMode === "endless" ? "返回主菜单" : "返回选关"}
+            </BackButton>
+            <strong>{briefingMode === "endless" ? "无尽模式" : `关卡 ${selectedLevel.id}`}</strong>
+          </header>
+          <div className="secondary-content briefing-content">
+            <div className="briefing-sheet">
+              <h1>准备防守</h1>
+              <p>{briefingMode === "endless" ? "本局阵容" : "本关阵容"}</p>
+              <div className="briefing-types">
+                {selectedLevel.catTypeIds.map((catTypeId) => {
+                  const catType = CAT_TYPES[catTypeId];
+                  return (
+                    <article className="briefing-type-card" key={catType.id}>
+                      <span>使用猫咪</span>
+                      <div className="briefing-type-images">
+                        {catType.imageAssets.map((src) => <Image key={src} src={src} alt="" width={747} height={900} unoptimized />)}
+                      </div>
+                      <strong>{catType.name}</strong>
+                    </article>
+                  );
+                })}
+                {selectedLevel.enemyTypeIds.map((enemyTypeId) => {
+                  const enemyType = ENEMY_TYPES[enemyTypeId];
+                  return (
+                    <article className="briefing-type-card" key={enemyType.id}>
+                      <span>敌人</span>
+                      <div className="briefing-type-images">
+                        {enemyType.imageAssets.map((src) => <Image key={src} src={src} alt="" width={288} height={237} unoptimized />)}
+                      </div>
+                      <strong>{enemyType.name}</strong>
+                    </article>
+                  );
+                })}
+              </div>
+              <button className="primary-button briefing-start" type="button" onClick={() => startGame(selectedLevel.id, briefingMode)}>
+                开始！
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {screen === "about" && (
+        <section className="game-cabinet secondary-page about-page" aria-label="关于花花对战路卡">
+          <header className="screen-topbar secondary-topbar">
+            <BackButton onClick={goToMainMenu} />
+            <strong>关于游戏</strong>
+          </header>
+          <div className="secondary-content">
+            <div className="info-sheet">
+              <GameWordmark />
+              <div className="about-grid">
+                <article className="about-full-row"><span>游戏设定</span><p>可恶的路卡正在从四面八方进攻花花的猫条，善良的花花蜷缩成球形进行反击，帮小花花守住花窝最后的防线吧</p></article>
+                <article className="about-full-row"><span>玩法</span><p>选择跑道并点击发射，清除敌人，别让路卡越过危险线。</p></article>
+                <article><span>制作人</span><p>Anuluca</p></article>
+                <article><span>相关链接</span><div className="related-actions external-links"><a href="https://github.com/anuluca" target="_blank" rel="noreferrer"><FaGithub aria-hidden="true" size={29} />GitHub</a><a href="https://anuluca.com" target="_blank" rel="noreferrer"><Image src="/assets/anutrium-logo.jpg" alt="" width={1280} height={1280} unoptimized />Anutrium</a></div></article>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {screen === "changelog" && (
+        <section className="game-cabinet secondary-page changelog-page" aria-label="更新日志">
+          <header className="screen-topbar secondary-topbar">
+            <BackButton onClick={goToMainMenu} />
+            <strong>更新日志</strong>
+          </header>
+          <div className="secondary-content changelog-content">
+            <div className="changelog-sheet">
+              <h1>更新日志</h1>
+              <article className="changelog-entry">
+                <header>
+                  <strong>v0.1_demo</strong>
+                  <time dateTime="2026-08-13">2026/08/13</time>
+                </header>
+                <p>完成游戏大体框架。</p>
+              </article>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {screen === "bestiary" && (
+        <section className="game-cabinet secondary-page bestiary-page" aria-label="图鉴">
+          <header className="screen-topbar secondary-topbar">
+            <BackButton onClick={goToMainMenu} />
+            <strong>图鉴</strong>
+          </header>
+          <div className="secondary-content bestiary-modules">
+            <button className="bestiary-module cat-module" type="button" onClick={() => navigateTo("cat-catalog")}>
+              <Image className="bestiary-single-cat" src="/assets/hua-bowl-1.png" alt="" width={747} height={900} unoptimized />
+              <strong>猫咪</strong><small>种类：1/12</small>
+            </button>
+            <button className="bestiary-module enemy-module" type="button" onClick={() => navigateTo("enemy-catalog")}>
+              <Image src={selectedEnemyType.headAsset} alt="" width={288} height={237} unoptimized />
+              <strong>敌人</strong><small>种类：1/12</small>
+            </button>
+          </div>
+        </section>
+      )}
+
+      {(screen === "cat-catalog" || screen === "enemy-catalog") && (
+        <section className="game-cabinet secondary-page catalog-page" aria-label={screen === "cat-catalog" ? "猫咪图鉴" : "敌人图鉴"}>
+          <header className="screen-topbar secondary-topbar">
+            <BackButton onClick={() => navigateTo("bestiary")}>返回图鉴</BackButton>
+            <strong>{screen === "cat-catalog" ? "猫咪列表" : "敌人列表"}</strong>
+          </header>
+          <div className="secondary-content catalog-list">
+            <div className={`catalog-grid${screen === "enemy-catalog" ? " is-enemy-grid" : ""}`}>
+              {Array.from({ length: 12 }, (_, index) => {
+                const isDiscovered = index === 0;
+                const isCat = screen === "cat-catalog";
+                return (
+                  <article className={`catalog-entry${isCat ? " is-cat" : " is-enemy"}${isDiscovered ? "" : " is-placeholder"}`} key={index}>
+                    <div className="catalog-entry-image" aria-hidden="true">
+                      {isDiscovered ? (
+                        isCat
+                          ? selectedCatType.imageAssets.map((src) => <Image key={src} src={src} alt="" width={747} height={900} unoptimized />)
+                          : selectedEnemyType.imageAssets.map((src) => <Image key={src} src={src} alt="" width={288} height={237} unoptimized />)
+                      ) : <strong>?</strong>}
                     </div>
-                  </div>
-                  {levelProgress[level.id].completed && <i className="completion-label">已完成</i>}
-                </button>
-              ))}
+                    <div>
+                      <span>{formatCatalogNumber(index)}</span>
+                      <h1>{isDiscovered ? (isCat ? selectedCatType.name : selectedEnemyType.name) : "尚未收录"}</h1>
+                      {isDiscovered && <p>{isCat ? selectedCatType.description : selectedEnemyType.description}</p>}
+                      {isDiscovered && (isCat
+                        ? <small className="position-tag">站位：{selectedCatType.position}</small>
+                        : <small className="strength-stars" aria-label={`强度 ${selectedEnemyType.strength} 星`}>强度：{Array.from({ length: 5 }, (_, star) => <i className={star < selectedEnemyType.strength ? "is-active" : ""} key={star}>★</i>)}</small>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           </div>
         </section>
@@ -687,47 +746,49 @@ export default function HuaVsLucaGame() {
       {screen === "game" && (
       <section className="game-cabinet game-page" aria-label="花花对战路卡网页游戏">
         <header className="game-hud">
-          <div className="brand-lockup" aria-label="花花 vs 路卡">
-            <span className="brand-title">花花 <i>VS</i> 路卡</span>
+          <div className="hud-brand-zone">
+            <VersusArtwork compact />
+            <GameWordmark compact />
           </div>
 
-          <div className="level-progress" aria-label={`关卡进度 ${Math.round(progress)}%`}>
+          <div className="level-progress" aria-label={snapshot.mode === "endless" ? "无尽模式" : `关卡进度 ${Math.round(progress)}%`}>
             <div className="level-copy">
-              <span>关卡 {activeLevel.id}</span>
-              <strong>{Math.round(progress)}%</strong>
+              <span>{snapshot.mode === "endless" ? "无尽模式" : `关卡 ${activeLevel.id}`}</span>
+              <strong>{snapshot.mode === "endless" ? "∞" : `${Math.round(progress)}%`}</strong>
             </div>
             <div className="progress-track">
-              <span style={{ width: `${progress}%` }} />
-              <i className="progress-cat" style={{ left: `${clamp(progress, 3, 96)}%` }}>▲</i>
+              <span style={{ width: `${displayedProgress}%` }} />
+              <i className="progress-cat" style={{ left: `${clamp(displayedProgress, 3, 96)}%` }}>▲</i>
             </div>
           </div>
 
-          <div className="score-block">
-            <span>分数</span>
-            <strong>{String(snapshot.score).padStart(5, "0")}</strong>
-            <small>BEST {String(currentBestScore).padStart(5, "0")}</small>
-          </div>
-
-          <div className="hud-actions">
-            <button
-              className="icon-button"
-              type="button"
-              onClick={toggleSound}
-              aria-label={soundEnabled ? "关闭音效" : "打开音效"}
-              title="音效"
-            >
-              {soundEnabled ? "♪" : "×"}
-            </button>
-            <button
-              className="icon-button"
-              type="button"
-              onClick={togglePause}
-              disabled={!(["playing", "paused"] as Phase[]).includes(snapshot.phase)}
-              aria-label={snapshot.phase === "paused" ? "继续游戏" : "暂停游戏"}
-              title="暂停"
-            >
-              {snapshot.phase === "paused" ? "▶" : "Ⅱ"}
-            </button>
+          <div className="hud-score-actions">
+            <div className="score-block">
+              <span>分数</span>
+              <strong>{String(snapshot.score).padStart(5, "0")}</strong>
+              <small>BEST {String(currentBestScore).padStart(5, "0")}</small>
+            </div>
+            <div className="hud-actions">
+              <button
+                className="icon-button"
+                type="button"
+                onClick={toggleSound}
+                aria-label={soundEnabled ? "关闭音效" : "打开音效"}
+                title="音效"
+              >
+                {soundEnabled ? <FaVolumeUp aria-hidden="true" size={20} /> : <FaVolumeMute aria-hidden="true" size={20} />}
+              </button>
+              <button
+                className="icon-button"
+                type="button"
+                onClick={togglePause}
+                disabled={!(["playing", "paused"] as Phase[]).includes(snapshot.phase)}
+                aria-label={snapshot.phase === "paused" ? "继续游戏" : "暂停游戏"}
+                title="暂停"
+              >
+                {snapshot.phase === "paused" ? <FaPlay aria-hidden="true" size={18} /> : <FaPause aria-hidden="true" size={18} />}
+              </button>
+            </div>
           </div>
         </header>
 
@@ -799,27 +860,33 @@ export default function HuaVsLucaGame() {
               <span>▶</span>
             </div>
 
-            {liveEnemies.map((enemy) => (
-              <div
-                className="luca-enemy"
-                data-variant={enemy.variant}
-                key={enemy.id}
-                style={{
-                  left: `${enemy.x}%`,
-                  top: `${((enemy.lane + 0.5) / GAME.lanes) * 100}%`,
-                  "--walk-delay": `${-(enemy.id % 5) * 0.09}s`,
-                } as CSSProperties}
-                aria-label={`第 ${enemy.lane + 1} 跑道的路卡`}
-              >
-                <span className="enemy-shadow" />
-                <span className="enemy-leg enemy-leg-left" />
-                <span className="enemy-leg enemy-leg-right" />
-                <span className="enemy-arm enemy-arm-left" />
-                <span className="enemy-arm enemy-arm-right" />
-                <span className="enemy-body" />
-                <Image src="/assets/luca-head.png" alt="" width={288} height={237} unoptimized />
-              </div>
-            ))}
+            {liveEnemies.map((enemy) => {
+              // HMR 期间旧局模型可能没有 typeId，回退到首个敌人类型避免本地热更新中断。
+              const enemyType = ENEMY_TYPES[enemy.typeId] ?? ENEMY_TYPES.luca;
+
+              return (
+                <div
+                  className="luca-enemy"
+                  key={enemy.id}
+                  style={{
+                    left: `${enemy.x}%`,
+                    top: `${((enemy.lane + 0.5) / GAME.lanes) * 100}%`,
+                    "--walk-delay": `${-(enemy.id % 5) * 0.09}s`,
+                    "--enemy-body-color": enemyType.bodyColor,
+                    "--enemy-arm-color": enemyType.armColor,
+                  } as CSSProperties}
+                  aria-label={`第 ${enemy.lane + 1} 跑道的${enemyType.name}`}
+                >
+                  <span className="enemy-shadow" />
+                  <span className="enemy-leg enemy-leg-left" />
+                  <span className="enemy-leg enemy-leg-right" />
+                  <span className="enemy-arm enemy-arm-right" />
+                  <span className="enemy-body" data-emblem={enemyType.emblem} />
+                  <span className="enemy-arm enemy-arm-left" />
+                  <Image src={enemyType.headAsset} alt="" width={288} height={237} unoptimized />
+                </div>
+              );
+            })}
 
             {snapshot.balls.map((ball) => (
               <div
@@ -834,7 +901,7 @@ export default function HuaVsLucaGame() {
               >
                 <div className="hua-ball-sprite">
                   <Image
-                    src={`/assets/hua-bowl-${ball.skin}.png`}
+                    src={ball.asset}
                     alt=""
                     width={747}
                     height={900}
@@ -872,9 +939,12 @@ export default function HuaVsLucaGame() {
                 <h2>等一下！</h2>
                 <p>先喘口气！路卡也被定住了！</p>
                 <div className="pause-actions">
-                  <button className="primary-button" type="button" onClick={togglePause}>继续游戏</button>
-                  <button className="primary-button is-khaki" type="button" onClick={() => startGame()}>重新开始</button>
-                  <button className="primary-button is-khaki" type="button" onClick={goToLevelSelect}>返回选关</button>
+                  <button className="primary-button" type="button" onClick={togglePause}><FaPlay aria-hidden="true" size={19} />继续游戏</button>
+                  <button className="primary-button is-khaki" type="button" onClick={() => startGame(snapshot.levelId, snapshot.mode ?? "level")}><FaRedoAlt aria-hidden="true" size={19} />重新开始</button>
+                  <button className="primary-button is-khaki" type="button" onClick={snapshot.mode === "endless" ? goToMainMenu : goToLevelSelect}>
+                    {snapshot.mode === "endless" ? <FaHome aria-hidden="true" size={20} /> : <FaListUl aria-hidden="true" size={19} />}
+                    {snapshot.mode === "endless" ? "返回主菜单" : "返回选关"}
+                  </button>
                 </div>
               </div>
             </div>
@@ -891,8 +961,8 @@ export default function HuaVsLucaGame() {
                   <span>最高连撞<strong>×{snapshot.bestCombo}</strong></span>
                   <span>发射次数<strong>{snapshot.shots}</strong></span>
                 </div>
-                <button className="primary-button" type="button" onClick={() => startGame()}>再来一局</button>
-                <button className="text-button" type="button" onClick={goToLevelSelect}>返回选关</button>
+                <button className="primary-button" type="button" onClick={() => startGame(snapshot.levelId, "level")}><FaRedoAlt aria-hidden="true" size={19} />再来一局</button>
+                <button className="primary-button is-khaki result-secondary-button" type="button" onClick={goToLevelSelect}><FaListUl aria-hidden="true" size={19} />返回选关</button>
               </div>
             </div>
           )}
@@ -902,10 +972,13 @@ export default function HuaVsLucaGame() {
               <div className="paper-card result-card">
                 <span className="result-stamp bad-stamp">OOPS!</span>
                 <p className="eyebrow">有路卡溜进来了</p>
-                <h2>猫窝失守</h2>
-                <p>已赶走 {snapshot.defeated} / {activeLevel.totalEnemies} 个路卡</p>
-                <button className="primary-button" type="button" onClick={() => startGame()}>重新挑战</button>
-                <button className="text-button" type="button" onClick={goToLevelSelect}>返回选关</button>
+                <h2>{snapshot.mode === "endless" ? "无尽防守结束" : "猫窝失守"}</h2>
+                <p>{snapshot.mode === "endless" ? `已赶走 ${snapshot.defeated} 个路卡` : `已赶走 ${snapshot.defeated} / ${activeLevel.totalEnemies} 个路卡`}</p>
+                <button className="primary-button" type="button" onClick={() => startGame(snapshot.levelId, snapshot.mode ?? "level")}><FaRedoAlt aria-hidden="true" size={19} />重新挑战</button>
+                <button className="primary-button is-khaki result-secondary-button" type="button" onClick={snapshot.mode === "endless" ? goToMainMenu : goToLevelSelect}>
+                  {snapshot.mode === "endless" ? <FaHome aria-hidden="true" size={20} /> : <FaListUl aria-hidden="true" size={19} />}
+                  {snapshot.mode === "endless" ? "返回主菜单" : "返回选关"}
+                </button>
               </div>
             </div>
           )}

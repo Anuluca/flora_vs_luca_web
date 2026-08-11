@@ -1,100 +1,90 @@
-# vinext-starter
+# 花花 VS 路卡
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+基于 React、TypeScript 与 vinext 的本地网页游戏。
 
-## Prerequisites
-
-- Node.js `>=22.13.0`
-
-## Quick Start
+## 本地开发
 
 ```bash
 npm install
 npm run dev
-npm run build
 ```
 
-This starter does not use `wrangler.jsonc`.
+默认访问开发服务器输出的 Local URL。当前项目不包含自动发布流程。
 
-## Included Shape
+## 质量检查
 
-- edit site code under `app/`
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/schema.ts` starts intentionally empty
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
-
-## Workspace Auth Headers
-
-Signed-in visitors receive both `oai-authenticated-user-id` and `oai-authenticated-user-email`. Private Sites require every visitor to sign in; public Sites may also have anonymous visitors, for whom neither header is present.
-
-The user ID is stable for the same user on the same Site and different across Sites. Email and name are intended for display or contact purposes.
-
-SIWC-authenticated workspace sites may also receive
-`oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty
-`name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by
-`oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
-
-Treat the full name as optional and fall back to email when it is absent:
-
-```tsx
-import { headers } from "next/headers";
-
-export default async function Home() {
-  const requestHeaders = await headers();
-  const userId = requestHeaders.get("oai-authenticated-user-id");
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
-
-  const displayName = fullName ?? email;
-  // ...
-}
+```bash
+npm run lint
+npm test
 ```
 
-## Optional Dispatch-Owned ChatGPT Sign-In
+`npm test` 会执行生产构建、服务端渲染检查和游戏配置边界检查。
 
-Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs
-optional or required ChatGPT sign-in:
+## 项目结构
 
-- Use `getChatGPTUser()` for optional signed-in UI.
-- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send
-  anonymous visitors through Sign in with ChatGPT.
-- Use `chatGPTSignInPath(returnTo)` and `chatGPTSignOutPath(returnTo)` for
-  browser links or actions.
-- Pass a same-origin relative `returnTo` path for the destination after sign-in
-  or sign-out. The helper validates and safely encodes it.
-- Mark protected pages with `export const dynamic = "force-dynamic"` because
-  they depend on per-request identity headers.
+```text
+app/
+  HuaVsLucaGame.tsx                 # 页面编排、交互事件与游戏循环
+  globals.css                       # 当前视觉系统与响应式样式
+features/game/
+  components/GameBrand.tsx          # Logo、返回按钮、对战预览、固定装饰
+  config/
+    cats.ts                         # 猫咪数据
+    enemies.ts                      # 敌人数据
+    levels.ts                       # 关卡数据
+    assets.ts                       # 根据类型配置生成预加载资源清单
+    index.ts                        # 配置层统一出口
+  domain/
+    config-types.ts                 # 配置数据结构
+    model.ts                        # 游戏规则、局内状态和纯逻辑函数
+  infrastructure/
+    progress-storage.ts             # LocalStorage 读写与旧数据迁移
+tests/
+  rendered-html.test.mjs            # 构建、渲染和配置结构测试
+```
 
-Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the
-OAuth cookies, and identity header injection. Do not implement app routes for
-those reserved paths. Routes that do not import and call the helper remain
-anonymous-compatible.
+## 数据维护入口
 
-SIWC establishes identity only; it does not prove workspace membership. Use the
-Sites hosting platform's access policy controls for workspace-wide restrictions,
-or enforce explicit server-side membership or allowlist checks.
+### 猫咪
 
-Use SIWC for account pages, user-specific dashboards, saved records, and write
-actions tied to the current ChatGPT user. Leave public content anonymous.
+编辑 `features/game/config/cats.ts`。
 
-## Useful Commands
+- `imageAssets`：图鉴和阵容卡片使用的全部图片。
+- `projectileAssets`：游戏中随机使用的弹射图片。
+- `previewAssets`：选关卡片中的图片及排列顺序。
+- `position`：图鉴中的站位标签。
 
-- `npm run dev`: start local development
-- `npm run build`: verify the vinext build output
-- `npm test`: build the starter and verify its rendered loading skeleton
-- `npm run db:generate`: generate Drizzle migrations after schema changes
+新增猫咪后，在目标关卡的 `catTypeIds` 中引用它的配置键。
 
-## Learn More
+### 敌人
 
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+编辑 `features/game/config/enemies.ts`。
+
+- `imageAssets`：图鉴和阵容卡片图片。
+- `headAsset`：游戏内角色头部图片。
+- `strength`：图鉴强度，范围为 1–5。
+- `bodyColor`、`armColor`、`emblem`：游戏内外观。
+
+新增敌人后，在目标关卡的 `enemyTypeIds` 中引用它的配置键。
+
+### 关卡
+
+编辑 `features/game/config/levels.ts`。
+
+- `difficulty`：显示难度，范围为 1–5。
+- `totalEnemies`：普通关卡敌人总量。
+- `enemySpeed`：基础移动速度。
+- `catTypeIds`：本关允许使用的猫咪类型。
+- `enemyTypeIds`：本关会出现的敌人类型。
+
+猫咪和敌人 ID 由 TypeScript 自动推导；关卡引用不存在的 ID 时，构建会直接失败。
+
+## 本地进度
+
+完成状态与各关最高分由 `features/game/infrastructure/progress-storage.ts` 管理，存储键为：
+
+```text
+hua-vs-luca-level-progress-v1
+```
+
+当前进度只保存在浏览器 LocalStorage。若后续商业化需要跨设备同步，应在基础设施层增加服务端存储适配，不要在页面组件中直接加入数据库请求。
