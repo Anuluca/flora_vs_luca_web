@@ -26,8 +26,9 @@ test("server-renders the complete Hua vs Luca game shell", async () => {
   assert.match(html, /<title>花花 vs 路卡｜猫窝保卫战<\/title>/i);
   assert.match(html, /花花/);
   assert.match(html, /路卡/);
-  assert.match(html, /开始保龄/);
-  assert.match(html, /关卡 1-1/);
+  assert.match(html, /开始游戏/);
+  assert.match(html, /选择关卡/);
+  assert.match(html, /18 ENEMIES/);
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape|SkeletonPreview/);
 });
 
@@ -44,6 +45,8 @@ test("keeps the game configuration and starter cleanup verifiable", async () => 
   assert.match(game, /requestAnimationFrame/);
   assert.match(game, /localStorage\.setItem\("hua-vs-luca-best"/);
   assert.match(game, /hua-bowl-\$\{ball\.skin\}/);
+  assert.match(game, /type Screen = "main-menu" \| "level-select" \| "game"/);
+  assert.match(game, /className="level-card is-open"/);
   assert.match(page, /<HuaVsLucaGame \/>/);
   assert.match(layout, /lang="zh-CN"/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);

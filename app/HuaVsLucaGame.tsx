@@ -21,6 +21,7 @@ const GAME = {
 } as const;
 
 type Phase = "menu" | "playing" | "paused" | "victory" | "defeat";
+type Screen = "main-menu" | "level-select" | "game";
 
 type Enemy = {
   id: number;
@@ -177,6 +178,7 @@ export default function HuaVsLucaGame() {
   const audioContextRef = useRef<AudioContext | null>(null);
 
   const [snapshot, setSnapshot] = useState<GameModel>(initialModel);
+  const [screen, setScreen] = useState<Screen>("main-menu");
   const [selectedLane, setSelectedLane] = useState(2);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [bestScore, setBestScore] = useState(0);
@@ -238,9 +240,24 @@ export default function HuaVsLucaGame() {
     syncAtRef.current = 0;
     setDecorations(createDecorations());
     setLane(2);
+    setScreen("game");
     playSound("roll");
     sync();
   }, [playSound, setLane, sync]);
+
+  const goToMainMenu = useCallback(() => {
+    modelRef.current = createModel("menu");
+    previousFrameRef.current = null;
+    setScreen("main-menu");
+    sync();
+  }, [sync]);
+
+  const goToLevelSelect = useCallback(() => {
+    modelRef.current = createModel("menu");
+    previousFrameRef.current = null;
+    setScreen("level-select");
+    sync();
+  }, [sync]);
 
   const togglePause = useCallback(() => {
     const model = modelRef.current;
@@ -310,13 +327,24 @@ export default function HuaVsLucaGame() {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (["ArrowUp", "ArrowDown", " "].includes(event.key)) event.preventDefault();
+
+      if (screen === "main-menu") {
+        if (event.key === " " || event.key === "Enter") goToLevelSelect();
+        return;
+      }
+
+      if (screen === "level-select") {
+        if (event.key === " " || event.key === "Enter") startGame();
+        else if (event.key === "Escape") goToMainMenu();
+        return;
+      }
+
       if (event.key === "ArrowUp" || event.key.toLowerCase() === "w") {
         setLane(selectedLaneRef.current - 1);
       } else if (event.key === "ArrowDown" || event.key.toLowerCase() === "s") {
         setLane(selectedLaneRef.current + 1);
       } else if (event.key === " " || event.key === "Enter") {
-        if (modelRef.current.phase === "menu") startGame();
-        else shoot();
+        shoot();
       } else if (event.key === "Escape" || event.key.toLowerCase() === "p") {
         togglePause();
       } else if (event.key.toLowerCase() === "m") {
@@ -326,7 +354,7 @@ export default function HuaVsLucaGame() {
 
     window.addEventListener("keydown", onKeyDown, { passive: false });
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [setLane, shoot, startGame, togglePause, toggleSound]);
+  }, [goToLevelSelect, goToMainMenu, screen, setLane, shoot, startGame, togglePause, toggleSound]);
 
   useEffect(() => {
     const tick = (timestamp: number) => {
@@ -441,6 +469,118 @@ export default function HuaVsLucaGame() {
       <div className="wall-doodle wall-doodle-one" aria-hidden="true">✦</div>
       <div className="wall-doodle wall-doodle-two" aria-hidden="true">=^･ω･^=</div>
 
+      {screen === "main-menu" && (
+        <section className="game-cabinet front-page" aria-label="花花对战路卡主菜单">
+          <div className="front-page-noise" aria-hidden="true" />
+          <header className="screen-topbar">
+            <span>HUĀHUĀ DEFENSE CLUB</span>
+            <strong>最高分 {String(bestScore).padStart(5, "0")}</strong>
+          </header>
+
+          <div className="front-page-layout">
+            <div className="front-art" aria-hidden="true">
+              <span className="front-scribble">ROLL!</span>
+              <Image
+                className="front-hua"
+                src="/assets/hua-bowl-1.png"
+                alt=""
+                width={637}
+                height={900}
+                priority
+                unoptimized
+              />
+              <div className="front-versus">VS</div>
+              <div className="front-luca">
+                <Image src="/assets/luca-head.png" alt="" width={288} height={237} priority unoptimized />
+                <span />
+              </div>
+              <i className="motion-line line-one" />
+              <i className="motion-line line-two" />
+              <i className="motion-line line-three" />
+            </div>
+
+            <div className="paper-card main-menu-card">
+              <span className="pin pin-left" />
+              <span className="pin pin-right" />
+              <p className="eyebrow">猫窝保卫战</p>
+              <h1>花花 <em>vs</em> 路卡</h1>
+              <p className="menu-tagline">滚动花花，弹飞路卡。<br />这次猫窝一个都不能少。</p>
+              <nav className="main-menu-actions" aria-label="主菜单操作">
+                <button className="primary-button" type="button" onClick={goToLevelSelect}>
+                  <span>▶</span> 开始游戏
+                </button>
+                <button className="menu-secondary-button" type="button" onClick={goToLevelSelect}>
+                  选择关卡 <span>→</span>
+                </button>
+              </nav>
+              <div className="menu-rule">
+                <span>目标</span>
+                <strong>清除全部路卡</strong>
+                <i>18 ENEMIES</i>
+              </div>
+            </div>
+          </div>
+
+          <footer className="front-page-footer">
+            <span><kbd>ENTER</kbd> 确认</span>
+            <span><kbd>↑</kbd><kbd>↓</kbd> 选择跑道</span>
+            <span><kbd>SPACE</kbd> 发射花花</span>
+          </footer>
+        </section>
+      )}
+
+      {screen === "level-select" && (
+        <section className="game-cabinet level-select-page" aria-label="选择关卡">
+          <header className="screen-topbar level-topbar">
+            <button type="button" onClick={goToMainMenu} aria-label="返回主菜单">← 返回</button>
+            <div>
+              <span>CHAPTER 01</span>
+              <strong>选择关卡</strong>
+            </div>
+            <i>猫窝外围</i>
+          </header>
+
+          <div className="level-board">
+            <div className="level-board-title">
+              <span className="tape tape-one" />
+              <span className="tape tape-two" />
+              <p>第一章</p>
+              <h1>路卡来袭</h1>
+              <small>目前开放 1 个关卡</small>
+            </div>
+
+            <div className="level-grid">
+              <button className="level-card is-open" type="button" onClick={startGame}>
+                <span className="level-number">1-1</span>
+                <div className="level-preview" aria-hidden="true">
+                  <Image src="/assets/scratcher-house.png" alt="" width={675} height={900} unoptimized />
+                  <Image src="/assets/luca-head.png" alt="" width={288} height={237} unoptimized />
+                </div>
+                <strong>猫窝前院</strong>
+                <small>18 个路卡 · 五条跑道</small>
+                <i>可挑战</i>
+              </button>
+
+              {["1-2", "1-3", "1-4", "1-5", "1-6"].map((level) => (
+                <button className="level-card is-locked" type="button" key={level} disabled>
+                  <span className="level-number">{level}</span>
+                  <div className="locked-mark" aria-hidden="true">×</div>
+                  <strong>尚未开放</strong>
+                  <small>等待后续章节</small>
+                  <i>LOCKED</i>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <footer className="level-page-footer">
+            <span>选择 1-1 开始挑战</span>
+            <strong>BEST {String(bestScore).padStart(5, "0")}</strong>
+          </footer>
+        </section>
+      )}
+
+      {screen === "game" && (
       <section className="game-cabinet" aria-label="花花对战路卡网页游戏">
         <header className="game-hud">
           <div className="brand-lockup" aria-label="花花 vs 路卡">
@@ -466,6 +606,15 @@ export default function HuaVsLucaGame() {
           </div>
 
           <div className="hud-actions">
+            <button
+              className="icon-button"
+              type="button"
+              onClick={goToLevelSelect}
+              aria-label="返回选关"
+              title="返回选关"
+            >
+              ⌂
+            </button>
             <button
               className="icon-button"
               type="button"
@@ -596,7 +745,6 @@ export default function HuaVsLucaGame() {
                   height={900}
                   unoptimized
                 />
-                <span />
               </div>
             ))}
 
@@ -629,35 +777,6 @@ export default function HuaVsLucaGame() {
             </div>
           )}
 
-          {snapshot.phase === "menu" && (
-            <div className="game-overlay menu-overlay">
-              <div className="paper-card hero-card">
-                <span className="pin pin-left" />
-                <span className="pin pin-right" />
-                <div className="versus-portraits" aria-hidden="true">
-                  <div className="portrait hua-portrait">
-                    <Image src="/assets/hua-bowl-1.png" alt="" width={637} height={900} priority unoptimized />
-                  </div>
-                  <strong>VS</strong>
-                  <div className="portrait luca-portrait">
-                    <Image src="/assets/luca-head.png" alt="" width={288} height={237} priority unoptimized />
-                  </div>
-                </div>
-                <p className="eyebrow">猫窝保卫战 · 关卡 1-1</p>
-                <h1>花花 <em>vs</em> 路卡</h1>
-                <p className="hero-copy">把花花滚进跑道，利用弹射连撞，赶走全部 18 个路卡。</p>
-                <button className="primary-button" type="button" onClick={startGame}>
-                  <span>▶</span> 开始保龄
-                </button>
-                <div className="control-hints">
-                  <span><kbd>↑</kbd><kbd>↓</kbd> 选跑道</span>
-                  <span><kbd>SPACE</kbd> 发射</span>
-                  <span><kbd>P</kbd> 暂停</span>
-                </div>
-              </div>
-            </div>
-          )}
-
           {snapshot.phase === "paused" && (
             <div className="game-overlay">
               <div className="paper-card result-card">
@@ -666,6 +785,7 @@ export default function HuaVsLucaGame() {
                 <p>路卡也被定住了。</p>
                 <button className="primary-button" type="button" onClick={togglePause}>继续游戏</button>
                 <button className="text-button" type="button" onClick={startGame}>重新开始</button>
+                <button className="text-button" type="button" onClick={goToLevelSelect}>返回选关</button>
               </div>
             </div>
           )}
@@ -682,6 +802,7 @@ export default function HuaVsLucaGame() {
                   <span>发射次数<strong>{snapshot.shots}</strong></span>
                 </div>
                 <button className="primary-button" type="button" onClick={startGame}>再来一局</button>
+                <button className="text-button" type="button" onClick={goToLevelSelect}>返回选关</button>
               </div>
             </div>
           )}
@@ -694,6 +815,7 @@ export default function HuaVsLucaGame() {
                 <h2>猫窝失守</h2>
                 <p>已赶走 {snapshot.defeated} / {GAME.totalEnemies} 个路卡</p>
                 <button className="primary-button" type="button" onClick={startGame}>重新挑战</button>
+                <button className="text-button" type="button" onClick={goToLevelSelect}>返回选关</button>
               </div>
             </div>
           )}
@@ -723,8 +845,11 @@ export default function HuaVsLucaGame() {
           </div>
         </footer>
       </section>
+      )}
 
-      <p className="page-note">点击任意跑道即可瞄准并发射 · 建议横屏游玩</p>
+      {screen === "game" && (
+        <p className="page-note">点击任意跑道即可瞄准并发射 · 建议横屏游玩</p>
+      )}
     </main>
   );
 }
