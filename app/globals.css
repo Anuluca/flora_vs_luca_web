@@ -3666,6 +3666,127 @@ html[data-page-transition="fade"]::view-transition-new(game-panel) {
   box-shadow: none;
 }
 
+/* 关卡库存与评级系统 */
+.cat-inventory {
+  position: absolute;
+  z-index: 24;
+  top: 2.2%;
+  left: 1.8%;
+  display: grid;
+  gap: 5px;
+  pointer-events: none;
+}
+
+.cat-inventory-title {
+  width: fit-content;
+  padding: 3px 9px;
+  color: #f7ecd3;
+  background: #5f5148;
+  box-shadow: 2px 2px 0 rgba(45, 36, 31, .28);
+  font-size: 11px;
+  font-weight: 1000;
+  transform: rotate(-2deg);
+}
+
+.cat-inventory-card {
+  width: 192px;
+  min-height: 72px;
+  padding: 7px 9px;
+  display: grid;
+  grid-template-columns: 48px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  border: 2px solid rgba(68, 57, 49, .62);
+  border-radius: 6px 8px 5px 7px;
+  color: var(--ink);
+  background: #f2e6c9;
+  box-shadow: 4px 5px 0 rgba(47, 38, 32, .28);
+  text-align: left;
+  cursor: grab;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+  transition: transform 140ms ease, opacity 140ms ease, box-shadow 140ms ease;
+}
+
+.cat-inventory-card:not(:disabled):hover {
+  transform: translateY(-2px) rotate(-1deg);
+  box-shadow: 6px 7px 0 rgba(47, 38, 32, .25);
+}
+
+.cat-inventory-card.is-active {
+  cursor: grabbing;
+  transform: scale(.96) rotate(1deg);
+  opacity: .76;
+}
+
+.cat-inventory-card:disabled {
+  cursor: not-allowed;
+  filter: grayscale(.75);
+  opacity: .55;
+}
+
+.cat-inventory-card img {
+  width: 46px;
+  height: 54px;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.cat-inventory-card span { display: grid; gap: 3px; }
+.cat-inventory-card strong { font-size: 14px; }
+.cat-inventory-card small { color: #76675d; font-size: 9px; font-weight: 800; }
+.cat-inventory-card b { color: var(--red-dark); font-size: 21px; }
+
+.lane-aim {
+  top: var(--selected-lane-top);
+}
+
+.level-rating-stickers {
+  position: absolute;
+  z-index: 7;
+  right: 4px;
+  bottom: 49px;
+  display: flex;
+  gap: 1px;
+  transform: rotate(-6deg);
+}
+
+.level-rating-stickers i,
+.victory-rating i {
+  color: #c7bda7;
+  font-style: normal;
+  line-height: 1;
+  -webkit-text-stroke: 1px #5e5147;
+  paint-order: stroke fill;
+  filter: drop-shadow(2px 2px 0 rgba(50, 41, 35, .28));
+}
+
+.level-rating-stickers i { font-size: 25px; }
+.level-rating-stickers i:nth-child(2) { transform: translateY(-4px) rotate(4deg); }
+.level-rating-stickers i.is-active,
+.victory-rating i.is-active { color: #f1c85f; }
+
+.victory-rating {
+  margin: 7px auto -8px;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.victory-rating i { font-size: 52px; }
+.victory-rating i:nth-child(2) { transform: translateY(-8px); }
+
+.victory-overlay .result-grid {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.briefing-score-note {
+  color: #76665a;
+  font-size: 11px;
+  font-weight: 900;
+}
+
 /* 页面元素入场：每个界面按阅读顺序轻量错峰。 */
 .loading-paper {
   animation: noteArrive 420ms cubic-bezier(.2, .8, .25, 1.08) both;

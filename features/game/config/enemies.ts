@@ -12,6 +12,7 @@ export const ENEMY_TYPES = {
     bodyColor: "#D4C892",
     armColor: "#D4C892",
     emblem: "◀",
+    killScore: 100,
   },
 } as const satisfies Record<string, EnemyTypeConfig>;
 

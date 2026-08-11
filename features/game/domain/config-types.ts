@@ -8,6 +8,8 @@ export type CatTypeConfig = {
   imageAssets: readonly string[];
   projectileAssets: readonly string[];
   previewAssets: readonly string[];
+  /** 结算时每只未使用猫咪可兑换的分数。 */
+  unusedBonusScore: number;
 };
 
 export type EnemyTypeConfig = {
@@ -20,6 +22,13 @@ export type EnemyTypeConfig = {
   bodyColor: string;
   armColor: string;
   emblem: string;
+  /** 击败该敌人的基础分，连撞倍率会在此基础上计算。 */
+  killScore: number;
+};
+
+export type RatingThresholds = {
+  twoStars: number;
+  threeStars: number;
 };
 
 export type LevelConfig<CatId extends string = string, EnemyId extends string = string> = {
@@ -28,6 +37,9 @@ export type LevelConfig<CatId extends string = string, EnemyId extends string = 
   difficulty: Difficulty;
   totalEnemies: number;
   enemySpeed: number;
+  lanes: number;
+  catInventory: Readonly<Partial<Record<CatId, number>>>;
+  ratingThresholds: RatingThresholds;
   catTypeIds: readonly CatId[];
   enemyTypeIds: readonly EnemyId[];
 };

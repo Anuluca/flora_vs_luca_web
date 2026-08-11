@@ -1,7 +1,6 @@
-import { LEVELS, type CatTypeId, type EnemyTypeId, type Level, type LevelId } from "../config";
+import { CAT_TYPES, LEVELS, type CatTypeId, type EnemyTypeId, type Level, type LevelId } from "../config";
 
 export const GAME = {
-  lanes: 5,
   ballSpeed: 39,
   ballLaneSpeed: 4.5,
   cooldown: 0.62,
@@ -11,6 +10,7 @@ export const GAME = {
 
 export type Phase = "menu" | "playing" | "paused" | "victory" | "defeat";
 export type GameMode = "level" | "endless";
+export type StarRating = 0 | 1 | 2 | 3;
 
 export type Enemy = {
   id: number;
@@ -46,6 +46,7 @@ export type GameModel = {
   phase: Phase;
   elapsed: number;
   score: number;
+  unusedCatBonus: number;
   combo: number;
   bestCombo: number;
   defeated: number;
@@ -57,6 +58,8 @@ export type GameModel = {
   effects: HitEffect[];
   nextEnemyId: number;
   nextEndlessSpawnAt: number;
+  laneCount: number;
+  remainingCats: Record<CatTypeId, number>;
 };
 
 export type Decoration = {
@@ -85,13 +88,13 @@ export function createEnemySchedule(level: Level): Enemy[] {
   let repeated = 0;
 
   return Array.from({ length: level.totalEnemies }, (_, index) => {
-    let lane = Math.floor(Math.random() * GAME.lanes);
+    let lane = Math.floor(Math.random() * level.lanes);
 
     if (lane === previousLane) repeated += 1;
     else repeated = 0;
 
-    if (repeated > 1) {
-      lane = (lane + 1 + Math.floor(Math.random() * (GAME.lanes - 1))) % GAME.lanes;
+    if (repeated > 1 && level.lanes > 1) {
+      lane = (lane + 1 + Math.floor(Math.random() * (level.lanes - 1))) % level.lanes;
       repeated = 0;
     }
 
@@ -115,6 +118,9 @@ export function createGameModel(
   mode: GameMode = "level",
 ): GameModel {
   const enemies = mode === "endless" ? [] : createEnemySchedule(level);
+  const remainingCats = Object.fromEntries(
+    level.catTypeIds.map((catTypeId) => [catTypeId, level.catInventory[catTypeId] ?? 0]),
+  ) as Record<CatTypeId, number>;
 
   return {
     levelId: level.id,
@@ -122,6 +128,7 @@ export function createGameModel(
     phase,
     elapsed: 0,
     score: 0,
+    unusedCatBonus: 0,
     combo: 0,
     bestCombo: 0,
     defeated: 0,
@@ -133,6 +140,8 @@ export function createGameModel(
     effects: [],
     nextEnemyId: enemies.length + 1,
     nextEndlessSpawnAt: 0.75,
+    laneCount: level.lanes,
+    remainingCats,
   };
 }
 
@@ -156,7 +165,9 @@ export function createDecorations(): Decoration[] {
   }));
 }
 
-export function chooseRicochetLane(ball: Ball, enemies: Enemy[]) {
+export function chooseRicochetLane(ball: Ball, enemies: Enemy[], laneCount: number) {
+  if (laneCount <= 1) return 0;
+
   const currentLane = Math.round(ball.lane);
   const liveTargets = enemies
     .filter(
@@ -170,6 +181,26 @@ export function chooseRicochetLane(ball: Ball, enemies: Enemy[]) {
 
   if (liveTargets[0]) return liveTargets[0].lane;
   if (currentLane === 0) return 1;
-  if (currentLane === GAME.lanes - 1) return GAME.lanes - 2;
+  if (currentLane === laneCount - 1) return laneCount - 2;
   return currentLane + (Math.random() > 0.5 ? 1 : -1);
+}
+
+/** 完成关卡即至少一星，其余星级只由该关卡的两条分数线决定。 */
+export function getLevelRating(level: Level, score: number, completed: boolean): StarRating {
+  if (!completed) return 0;
+  if (score >= level.ratingThresholds.threeStars) return 3;
+  if (score >= level.ratingThresholds.twoStars) return 2;
+  return 1;
+}
+
+/** 同一只猫咪连续击中的第 N 个敌人，倍率依次为 1、1.2、1.4…… */
+export function getChainMultiplier(chainCount: number) {
+  return 1 + Math.max(0, chainCount - 1) * 0.2;
+}
+
+export function getUnusedCatBonus(remainingCats: Partial<Record<CatTypeId, number>>) {
+  return Object.entries(remainingCats).reduce((total, [catTypeId, count]) => {
+    const catType = CAT_TYPES[catTypeId as CatTypeId];
+    return total + (catType?.unusedBonusScore ?? 0) * Math.max(0, count ?? 0);
+  }, 0);
 }

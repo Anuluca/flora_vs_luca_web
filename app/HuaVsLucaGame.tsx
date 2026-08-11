@@ -30,6 +30,7 @@ import {
   GAME_ASSET_URLS,
   LEVELS,
   getLevel,
+  type CatTypeId,
   type LevelId,
 } from "@/features/game/config";
 import {
@@ -39,6 +40,9 @@ import {
   clamp,
   createDecorations,
   createGameModel,
+  getChainMultiplier,
+  getLevelRating,
+  getUnusedCatBonus,
   type GameMode,
   type GameModel,
   type Phase,
@@ -93,9 +97,9 @@ export default function HuaVsLucaGame() {
   const frameRef = useRef<number | null>(null);
   const previousFrameRef = useRef<number | null>(null);
   const syncAtRef = useRef(0);
-  const selectedLaneRef = useRef(2);
   const soundEnabledRef = useRef(true);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const laneFieldRef = useRef<HTMLDivElement | null>(null);
 
   const [snapshot, setSnapshot] = useState<GameModel>(initialModel);
   const [screen, setScreen] = useState<Screen>("loading");
@@ -109,6 +113,7 @@ export default function HuaVsLucaGame() {
   const [assetLoadFailed, setAssetLoadFailed] = useState(false);
   const [assetLoadAttempt, setAssetLoadAttempt] = useState(0);
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
+  const [draggedCatTypeId, setDraggedCatTypeId] = useState<CatTypeId | null>(null);
 
   const navigateTo = useCallback((nextScreen: Screen, transitionMode: PageTransitionMode = "page") => {
     const transitionDocument = document as ViewTransitionDocument;
@@ -135,12 +140,12 @@ export default function HuaVsLucaGame() {
       enemies: [...model.enemies],
       balls: [...model.balls],
       effects: [...model.effects],
+      remainingCats: { ...model.remainingCats },
     });
   }, []);
 
   const setLane = useCallback((lane: number) => {
-    const nextLane = clamp(lane, 0, GAME.lanes - 1);
-    selectedLaneRef.current = nextLane;
+    const nextLane = clamp(lane, 0, modelRef.current.laneCount - 1);
     setSelectedLane(nextLane);
   }, []);
 
@@ -185,7 +190,8 @@ export default function HuaVsLucaGame() {
     syncAtRef.current = 0;
     setDecorations(createDecorations());
     setSelectedLevelId(levelId);
-    setLane(2);
+    setDraggedCatTypeId(null);
+    setLane(Math.floor((level.lanes - 1) / 2));
     navigateTo("game", "fade");
     playSound("roll");
     sync();
@@ -227,10 +233,14 @@ export default function HuaVsLucaGame() {
   }, []);
 
   const shoot = useCallback(
-    (lane = selectedLaneRef.current) => {
+    (lane: number, catTypeId: CatTypeId) => {
       const model = modelRef.current;
-      if (model.phase !== "playing" || model.elapsed < model.nextShotAt) return;
-      const catTypeId = getLevel(model.levelId).catTypeIds[0];
+      const remaining = model.remainingCats[catTypeId] ?? 0;
+      if (
+        model.phase !== "playing" ||
+        model.elapsed < model.nextShotAt ||
+        (model.mode !== "endless" && remaining <= 0)
+      ) return false;
       const catType = CAT_TYPES[catTypeId];
 
       setLane(lane);
@@ -244,9 +254,11 @@ export default function HuaVsLucaGame() {
         hitIds: [],
       });
       model.shots += 1;
+      if (model.mode !== "endless") model.remainingCats[catTypeId] = remaining - 1;
       model.nextShotAt = model.elapsed + GAME.cooldown;
       playSound("roll");
       sync();
+      return true;
     },
     [playSound, setLane, sync],
   );
@@ -254,21 +266,34 @@ export default function HuaVsLucaGame() {
   const updatePointerLane = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
       const bounds = event.currentTarget.getBoundingClientRect();
-      const lane = Math.floor(((event.clientY - bounds.top) / bounds.height) * GAME.lanes);
+      const lane = Math.floor(((event.clientY - bounds.top) / bounds.height) * modelRef.current.laneCount);
       setLane(lane);
     },
     [setLane],
   );
 
-  const handleBoardPointerDown = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      updatePointerLane(event);
-      const bounds = event.currentTarget.getBoundingClientRect();
-      const lane = Math.floor(((event.clientY - bounds.top) / bounds.height) * GAME.lanes);
-      shoot(clamp(lane, 0, GAME.lanes - 1));
-    },
-    [shoot, updatePointerLane],
-  );
+  const updateDragLane = useCallback((event: ReactPointerEvent<HTMLButtonElement>) => {
+    const bounds = laneFieldRef.current?.getBoundingClientRect();
+    if (!bounds || event.clientY < bounds.top || event.clientY > bounds.bottom) return;
+    const lane = Math.floor(((event.clientY - bounds.top) / bounds.height) * modelRef.current.laneCount);
+    setLane(lane);
+  }, [setLane]);
+
+  const finishCatDrag = useCallback((event: ReactPointerEvent<HTMLButtonElement>, catTypeId: CatTypeId) => {
+    const bounds = laneFieldRef.current?.getBoundingClientRect();
+    if (
+      bounds &&
+      event.clientX >= bounds.left &&
+      event.clientX <= bounds.right &&
+      event.clientY >= bounds.top &&
+      event.clientY <= bounds.bottom
+    ) {
+      const lane = Math.floor(((event.clientY - bounds.top) / bounds.height) * modelRef.current.laneCount);
+      shoot(clamp(lane, 0, modelRef.current.laneCount - 1), catTypeId);
+    }
+    setDraggedCatTypeId(null);
+    event.currentTarget.releasePointerCapture(event.pointerId);
+  }, [shoot]);
 
   useEffect(() => {
     const emptyProgress = createEmptyLevelProgress();
@@ -363,7 +388,7 @@ export default function HuaVsLucaGame() {
           model.enemies.push({
             id: model.nextEnemyId,
             typeId: activeLevel.enemyTypeIds[model.nextEnemyId % activeLevel.enemyTypeIds.length],
-            lane: Math.floor(Math.random() * GAME.lanes),
+            lane: Math.floor(Math.random() * model.laneCount),
             x: 103,
             spawnAt: model.elapsed,
             spawned: true,
@@ -400,17 +425,21 @@ export default function HuaVsLucaGame() {
 
             enemy.defeated = true;
             ball.hitIds.push(enemy.id);
-            ball.targetLane = chooseRicochetLane(ball, model.enemies);
+            ball.targetLane = chooseRicochetLane(ball, model.enemies, model.laneCount);
             model.defeated += 1;
-            model.combo = model.elapsed - model.lastHitAt < 1.3 ? model.combo + 1 : 1;
+            const chainCount = ball.hitIds.length;
+            const multiplier = getChainMultiplier(chainCount);
+            const enemyType = ENEMY_TYPES[enemy.typeId] ?? ENEMY_TYPES.luca;
+            const killScore = Math.round(enemyType.killScore * multiplier);
+            model.combo = chainCount;
             model.bestCombo = Math.max(model.bestCombo, model.combo);
             model.lastHitAt = model.elapsed;
-            model.score += 100 + Math.max(0, model.combo - 1) * 35;
+            model.score += killScore;
             model.effects.push({
               id: Date.now() + enemy.id,
               lane: enemy.lane,
               x: enemy.x,
-              label: model.combo > 2 ? `×${model.combo} 连撞!` : "砰!",
+              label: chainCount > 1 ? `×${multiplier.toFixed(1)} +${killScore}` : `+${killScore}`,
               expiresAt: model.elapsed + 0.65,
             });
             playSound("hit");
@@ -425,6 +454,8 @@ export default function HuaVsLucaGame() {
         if (model.elapsed - model.lastHitAt > 1.45) model.combo = 0;
 
         if (model.mode !== "endless" && model.defeated >= activeLevel.totalEnemies) {
+          model.unusedCatBonus = getUnusedCatBonus(model.remainingCats);
+          model.score += model.unusedCatBonus;
           model.phase = "victory";
           setLevelProgress((current) => {
             const next = {
@@ -470,6 +501,7 @@ export default function HuaVsLucaGame() {
   const selectedLevel = getLevel(selectedLevelId);
   const selectedCatType = CAT_TYPES[selectedLevel.catTypeIds[0]];
   const selectedEnemyType = ENEMY_TYPES[selectedLevel.enemyTypeIds[0]];
+  const currentRating = getLevelRating(activeLevel, snapshot.score, snapshot.phase === "victory");
 
   return (
     <main className="page-shell">
@@ -564,11 +596,13 @@ export default function HuaVsLucaGame() {
 
             <div className="level-grid">
               {LEVELS.map((level, levelIndex) => {
-                const isOpen = levelIndex === 0;
+                const isOpen = levelIndex <= 1;
+                const progressEntry = levelProgress[level.id];
+                const rating = getLevelRating(level, progressEntry.bestScore, progressEntry.completed);
 
                 return (
                   <button
-                    className={`level-card ${isOpen ? "is-open" : "is-locked"}${levelProgress[level.id].completed ? " is-completed" : ""}`}
+                    className={`level-card ${isOpen ? "is-open" : "is-locked"}${progressEntry.completed ? " is-completed" : ""}`}
                     type="button"
                     key={level.id}
                     onClick={isOpen ? () => openLevelBriefing(level.id) : undefined}
@@ -579,7 +613,7 @@ export default function HuaVsLucaGame() {
                         <span className="level-number">{level.id}</span>
                         <MatchupPreview level={level} />
                         <strong>{level.name}</strong>
-                        <small>最高分 {String(levelProgress[level.id].bestScore).padStart(5, "0")}</small>
+                        <small>最高分 {String(progressEntry.bestScore).padStart(5, "0")}</small>
                         <div className="level-difficulty" aria-label={`难度 ${level.difficulty} 星`}>
                           <span>难度</span>
                           <div aria-hidden="true">
@@ -596,8 +630,15 @@ export default function HuaVsLucaGame() {
                             ))}
                           </div>
                         </div>
-                        {levelProgress[level.id].completed
-                          ? <i className="completion-label">已完成</i>
+                        {progressEntry.completed
+                          ? <>
+                              <span className="level-rating-stickers" aria-label={`${rating} 星评级`}>
+                                {Array.from({ length: 3 }, (_, index) => (
+                                  <i className={index < rating ? "is-active" : ""} key={index}>★</i>
+                                ))}
+                              </span>
+                              <i className="completion-label">已完成</i>
+                            </>
                           : <i className="incomplete-label">未完成</i>}
                       </>
                     ) : (
@@ -633,6 +674,10 @@ export default function HuaVsLucaGame() {
                         {catType.imageAssets.map((src) => <Image key={src} src={src} alt="" width={747} height={900} unoptimized />)}
                       </div>
                       <strong>{catType.name}</strong>
+                      <small className="briefing-score-note">
+                        {briefingMode === "endless" ? "数量不限" : `可使用 ${selectedLevel.catInventory[catTypeId] ?? 0} 只`}
+                        {` · 剩余每只 +${catType.unusedBonusScore} 分`}
+                      </small>
                     </article>
                   );
                 })}
@@ -645,6 +690,7 @@ export default function HuaVsLucaGame() {
                         {enemyType.imageAssets.map((src) => <Image key={src} src={src} alt="" width={288} height={237} unoptimized />)}
                       </div>
                       <strong>{enemyType.name}</strong>
+                      <small className="briefing-score-note">击败 +{enemyType.killScore} 分</small>
                     </article>
                   );
                 })}
@@ -805,7 +851,10 @@ export default function HuaVsLucaGame() {
 
         <div
           className={`battlefield phase-${snapshot.phase}`}
-          style={{ "--selected-lane": selectedLane } as CSSProperties}
+          style={{
+            "--selected-lane": selectedLane,
+            "--selected-lane-top": `${((selectedLane + 0.5) / activeLevel.lanes) * 100}%`,
+          } as CSSProperties}
         >
           <div className="paper-noise" aria-hidden="true" />
           <div className="danger-note" aria-hidden="true">
@@ -847,17 +896,51 @@ export default function HuaVsLucaGame() {
             </div>
           </div>
 
+          <div className={`cat-inventory${draggedCatTypeId ? " is-dragging" : ""}`}>
+            <span className="cat-inventory-title">可用猫咪</span>
+            {activeLevel.catTypeIds.map((catTypeId) => {
+              const catType = CAT_TYPES[catTypeId];
+              const remaining = snapshot.remainingCats[catTypeId] ?? 0;
+              const isUnavailable = snapshot.mode !== "endless" && remaining <= 0;
+
+              return (
+                <button
+                  className={`cat-inventory-card${draggedCatTypeId === catTypeId ? " is-active" : ""}`}
+                  type="button"
+                  key={catTypeId}
+                  disabled={snapshot.phase !== "playing" || isUnavailable}
+                  onPointerDown={(event) => {
+                    event.preventDefault();
+                    event.currentTarget.setPointerCapture(event.pointerId);
+                    setDraggedCatTypeId(catTypeId);
+                  }}
+                  onPointerMove={(event) => {
+                    if (event.currentTarget.hasPointerCapture(event.pointerId)) updateDragLane(event);
+                  }}
+                  onPointerUp={(event) => finishCatDrag(event, catTypeId)}
+                  onPointerCancel={() => setDraggedCatTypeId(null)}
+                  aria-label={`${catType.name}，剩余 ${snapshot.mode === "endless" ? "无限" : remaining} 只，按住拖到跑道发射`}
+                >
+                  <Image src={catType.previewAssets[0]} alt="" width={747} height={900} unoptimized draggable={false} />
+                  <span><strong>{catType.name}</strong><small>按住拖到跑道</small></span>
+                  <b>{snapshot.mode === "endless" ? "∞" : `×${remaining}`}</b>
+                </button>
+              );
+            })}
+          </div>
+
           <div
             className="lane-field"
+            ref={laneFieldRef}
             role="application"
-            aria-label="五条保龄球跑道。移动鼠标选择跑道，点击发射。"
+            aria-label={`${activeLevel.lanes} 条保龄球跑道。把左上角猫咪卡片拖到跑道发射。`}
             onPointerMove={updatePointerLane}
-            onPointerDown={handleBoardPointerDown}
           >
-            {Array.from({ length: GAME.lanes }, (_, lane) => (
+            {Array.from({ length: activeLevel.lanes }, (_, lane) => (
               <div
                 className={`lane ${selectedLane === lane ? "is-selected" : ""}`}
                 key={lane}
+                style={{ height: `${100 / activeLevel.lanes}%` }}
                 aria-hidden="true"
               >
                 <span>{lane + 1}</span>
@@ -882,7 +965,7 @@ export default function HuaVsLucaGame() {
                   key={enemy.id}
                   style={{
                     left: `${enemy.x}%`,
-                    top: `${((enemy.lane + 0.5) / GAME.lanes) * 100}%`,
+                    top: `${((enemy.lane + 0.5) / activeLevel.lanes) * 100}%`,
                     "--walk-delay": `${-(enemy.id % 5) * 0.09}s`,
                     "--enemy-body-color": enemyType.bodyColor,
                     "--enemy-arm-color": enemyType.armColor,
@@ -906,7 +989,7 @@ export default function HuaVsLucaGame() {
                 key={ball.id}
                 style={{
                   left: `${ball.x}%`,
-                  top: `${((ball.lane + 0.5) / GAME.lanes) * 100}%`,
+                  top: `${((ball.lane + 0.5) / activeLevel.lanes) * 100}%`,
                   transform: "translate(-50%, -50%)",
                 }}
                 aria-label="滚动中的花花"
@@ -929,7 +1012,7 @@ export default function HuaVsLucaGame() {
                 key={effect.id}
                 style={{
                   left: `${effect.x}%`,
-                  top: `${((effect.lane + 0.5) / GAME.lanes) * 100}%`,
+                  top: `${((effect.lane + 0.5) / activeLevel.lanes) * 100}%`,
                 }}
                 aria-hidden="true"
               >
@@ -968,8 +1051,14 @@ export default function HuaVsLucaGame() {
                 <span className="result-stamp">CLEAR!</span>
                 <p className="eyebrow">猫窝守住了</p>
                 <h2>{activeLevel.id} 通关</h2>
+                <div className="victory-rating" aria-label={`${currentRating} 星通关`}>
+                  {Array.from({ length: 3 }, (_, index) => (
+                    <i className={index < currentRating ? "is-active" : ""} key={index}>★</i>
+                  ))}
+                </div>
                 <div className="result-grid">
                   <span>最终得分<strong>{snapshot.score}</strong></span>
+                  <span>剩余奖励<strong>+{snapshot.unusedCatBonus}</strong></span>
                   <span>最高连撞<strong>×{snapshot.bestCombo}</strong></span>
                   <span>发射次数<strong>{snapshot.shots}</strong></span>
                 </div>
@@ -997,7 +1086,7 @@ export default function HuaVsLucaGame() {
         </div>
 
         <footer className="game-controls">
-          <p>点击任意跑道即可瞄准并发射 · 建议横屏游玩</p>
+          <p>按住左上角猫咪卡片拖到跑道发射 · 建议横屏游玩</p>
         </footer>
       </section>
       )}

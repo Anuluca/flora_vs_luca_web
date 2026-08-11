@@ -13,6 +13,7 @@ export const CAT_TYPES = {
     imageAssets: ["/assets/hua-bowl-1.png", "/assets/hua-bowl-2.png"],
     projectileAssets: ["/assets/hua-bowl-1.png", "/assets/hua-bowl-2.png"],
     previewAssets: ["/assets/hua-bowl-1.png", "/assets/hua-bowl-2.png"],
+    unusedBonusScore: 300,
   },
 } as const satisfies Record<string, CatTypeConfig>;
 
