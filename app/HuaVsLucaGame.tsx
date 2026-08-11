@@ -73,6 +73,8 @@ type ViewTransitionDocument = Document & {
   startViewTransition?: (update: () => void) => { finished: Promise<void> };
 };
 
+type PageTransitionMode = "page" | "fade";
+
 const LOADING_MESSAGES = [
   "- 花花正在睡觉 -",
   "- 花花正在跑酷 -",
@@ -108,16 +110,21 @@ export default function HuaVsLucaGame() {
   const [assetLoadAttempt, setAssetLoadAttempt] = useState(0);
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
 
-  const navigateTo = useCallback((nextScreen: Screen) => {
+  const navigateTo = useCallback((nextScreen: Screen, transitionMode: PageTransitionMode = "page") => {
     const transitionDocument = document as ViewTransitionDocument;
+    document.documentElement.dataset.pageTransition = transitionMode;
 
     if (!transitionDocument.startViewTransition) {
       setScreen(nextScreen);
+      delete document.documentElement.dataset.pageTransition;
       return;
     }
 
-    transitionDocument.startViewTransition(() => {
+    const transition = transitionDocument.startViewTransition(() => {
       flushSync(() => setScreen(nextScreen));
+    });
+    void transition.finished.finally(() => {
+      delete document.documentElement.dataset.pageTransition;
     });
   }, []);
 
@@ -179,7 +186,7 @@ export default function HuaVsLucaGame() {
     setDecorations(createDecorations());
     setSelectedLevelId(levelId);
     setLane(2);
-    navigateTo("game");
+    navigateTo("game", "fade");
     playSound("roll");
     sync();
   }, [navigateTo, playSound, selectedLevelId, setLane, sync]);
@@ -511,9 +518,11 @@ export default function HuaVsLucaGame() {
 
           <div className="front-page-layout">
             <VersusArtwork />
+            <div className="main-menu-wordmark">
+              <GameWordmark />
+            </div>
 
             <div className="paper-card main-menu-card">
-              <GameWordmark />
               <nav className="main-menu-actions" aria-label="主菜单操作">
                 <button className="primary-button" type="button" onClick={goToLevelSelect}>
                   <FaPlay aria-hidden="true" size={22} /> 开始游戏
@@ -587,7 +596,9 @@ export default function HuaVsLucaGame() {
                             ))}
                           </div>
                         </div>
-                        {levelProgress[level.id].completed && <i className="completion-label">已完成</i>}
+                        {levelProgress[level.id].completed
+                          ? <i className="completion-label">已完成</i>
+                          : <i className="incomplete-label">未完成</i>}
                       </>
                     ) : (
                       <strong className="locked-sleep">路卡正在睡觉…</strong>
@@ -827,7 +838,8 @@ export default function HuaVsLucaGame() {
                     {
                       left: `${decoration.x}%`,
                       top: `${decoration.y}%`,
-                      transform: `rotate(${decoration.rotation}deg) scale(${decoration.scale})`,
+                      "--treat-rotation": `${decoration.rotation}deg`,
+                      "--treat-scale": decoration.scale,
                     } as CSSProperties
                   }
                 />

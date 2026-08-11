@@ -33,8 +33,9 @@ test("server-renders the complete Hua vs Luca game shell", async () => {
 });
 
 test("keeps the game configuration and project boundaries verifiable", async () => {
-  const [game, cats, enemies, levels, model, storage, configTypes, page, layout, vite, packageJson] = await Promise.all([
+  const [game, globals, cats, enemies, levels, model, storage, configTypes, page, layout, vite, packageJson] = await Promise.all([
     readFile(new URL("../app/HuaVsLucaGame.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
     readFile(new URL("../features/game/config/cats.ts", import.meta.url), "utf8"),
     readFile(new URL("../features/game/config/enemies.ts", import.meta.url), "utf8"),
     readFile(new URL("../features/game/config/levels.ts", import.meta.url), "utf8"),
@@ -79,6 +80,13 @@ test("keeps the game configuration and project boundaries verifiable", async () 
   assert.match(levels, /enemyTypeIds/);
   assert.match(game, /completion-label/);
   assert.match(game, /Promise\.all\(GAME_ASSET_URLS\.map\(loadAsset\)\)/);
+  assert.match(game, /navigateTo\("game", "fade"\)/);
+  assert.match(game, /className="incomplete-label">未完成/);
+  assert.match(game, /className="main-menu-wordmark"/);
+  assert.match(globals, /body\s*\{\s*background:\s*#e7dfcb/);
+  assert.match(globals, /html\[data-page-transition="fade"\]/);
+  assert.match(globals, /@keyframes treatSway/);
+  assert.match(globals, /\.changelog-sheet\s*\{\s*border:\s*0;\s*background:\s*transparent/);
   assert.doesNotMatch(game, /addEventListener\("keydown"/);
   assert.match(page, /<HuaVsLucaGame \/>/);
   assert.match(layout, /lang="zh-CN"/);

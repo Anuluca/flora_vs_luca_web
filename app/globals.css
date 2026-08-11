@@ -3517,6 +3517,319 @@ button:focus-visible {
   .corner-hua { transform: rotate(-16deg); }
 }
 
+/* 2026-08-12 页面动效、主菜单标题与战斗场景调整 */
+body {
+  background: #e7dfcb;
+}
+
+.game-cabinet {
+  box-shadow:
+    0 8px 0 #bdb39f,
+    0 18px 30px rgba(82, 70, 58, .18),
+    inset 0 0 0 3px rgba(255, 255, 255, .18);
+}
+
+.page-shell::before {
+  background: radial-gradient(ellipse at center, transparent 56%, rgba(105, 91, 75, .12) 140%);
+}
+
+.screen-topbar {
+  border: 0;
+}
+
+.back-button {
+  border-radius: 6px !important;
+}
+
+.menu-corner-tabs .info-button {
+  border: 1px solid #afa48f;
+  box-shadow: 2px 3px 0 rgba(77, 65, 54, .18);
+}
+
+.menu-corner-tabs .info-button::before {
+  border-width: 1px;
+  border-color: #afa48f;
+}
+
+.versus-artwork:not(.is-compact) .versus-word {
+  display: none;
+}
+
+.main-menu-wordmark {
+  position: absolute;
+  z-index: 24;
+  left: 39%;
+  top: 48%;
+  width: clamp(150px, 17vw, 235px);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.main-menu-wordmark .game-wordmark {
+  flex-direction: column;
+  gap: 0;
+  font-size: clamp(38px, 4.6vw, 64px);
+  font-style: normal;
+  line-height: .88;
+  white-space: normal;
+  transform: none;
+}
+
+.main-menu-wordmark .game-wordmark span {
+  display: block;
+  font-style: normal;
+  text-shadow: 3px 3px 0 var(--red-dark), 5px 5px 0 rgba(40, 35, 33, .12);
+  transform: none;
+}
+
+.main-menu-wordmark .game-wordmark em {
+  display: block;
+  margin: 5px 0 3px;
+  font-size: .53em;
+  font-style: italic;
+  text-shadow: 2px 2px 0 var(--red-dark);
+  transform: skewX(-12deg);
+}
+
+.main-menu-card.paper-card {
+  transform: translate(7%, 11%);
+}
+
+.level-board-title {
+  border: 2px solid rgba(114, 101, 87, .58);
+}
+
+.level-board-title > h1 {
+  margin-top: 8px;
+}
+
+.level-card .incomplete-label {
+  position: absolute;
+  z-index: 6;
+  right: 7px;
+  bottom: 7px;
+  display: block;
+  padding: 9px 15px;
+  color: #f7eccf;
+  background: #9b633f;
+  box-shadow: 3px 3px 0 rgba(42, 33, 29, .28);
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 1000;
+  line-height: 1;
+  transform: rotate(-5deg);
+}
+
+html[data-page-transition="fade"]::view-transition-old(game-panel) {
+  animation: panelFadeOut 180ms ease-out both;
+}
+
+html[data-page-transition="fade"]::view-transition-new(game-panel) {
+  transform-origin: center;
+  animation: panelFadeIn 320ms ease-out both;
+}
+
+@keyframes panelFadeOut {
+  to { opacity: 0; }
+}
+
+@keyframes panelFadeIn {
+  from { opacity: 0; transform: scale(.985); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.home-zone {
+  left: -11.5%;
+  width: 23%;
+  transform: scale(2);
+  transform-origin: center center;
+}
+
+.treats-on-house img {
+  transform: rotate(var(--treat-rotation, 0deg)) scale(var(--treat-scale, 1));
+  animation: treatSway 1.65s ease-in-out infinite alternate;
+}
+
+.treats-on-house img:nth-child(even) {
+  animation-delay: -.82s;
+  animation-direction: alternate-reverse;
+}
+
+@keyframes treatSway {
+  from { transform: rotate(calc(var(--treat-rotation, 0deg) - 3deg)) scale(var(--treat-scale, 1)); }
+  to { transform: rotate(calc(var(--treat-rotation, 0deg) + 4deg)) scale(var(--treat-scale, 1)) translateY(-2px); }
+}
+
+.changelog-sheet {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* 页面元素入场：每个界面按阅读顺序轻量错峰。 */
+.loading-paper {
+  animation: noteArrive 420ms cubic-bezier(.2, .8, .25, 1.08) both;
+}
+
+.loading-paper .pin { animation: pinDrop 380ms 150ms cubic-bezier(.2, .8, .25, 1.2) both; }
+.loading-paper h1 { animation: softRise 360ms 110ms ease-out both; }
+.loading-paper .asset-progress { animation: stretchIn 420ms 190ms ease-out both; }
+.loading-paper > strong { animation: gentleFade 260ms 260ms ease-out both; }
+.loading-paper > small { animation: gentleFade 300ms 320ms ease-out both; }
+
+.front-page .front-page-noise { animation: gentleFade 360ms ease-out both; }
+.front-page .versus-hua { animation: characterFromLeft 520ms 60ms cubic-bezier(.2, .82, .22, 1.08) both; }
+.front-page .versus-luca { animation: characterFromRight 540ms 110ms cubic-bezier(.2, .82, .22, 1.08) both; }
+.front-page .main-menu-wordmark { animation: mainWordmarkArrive 440ms 260ms cubic-bezier(.2, .85, .25, 1.18) both; }
+.front-page .main-menu-actions > .primary-button { animation: softRise 360ms 360ms ease-out backwards; }
+.front-page .menu-secondary-row > button:first-child { animation: softRise 360ms 430ms ease-out backwards; }
+.front-page .menu-secondary-row > button:last-child { animation: softRise 360ms 490ms ease-out backwards; }
+.front-page .front-page-meta { animation: gentleFade 320ms 560ms ease-out both; }
+.menu-corner-tabs.is-visible .info-button { animation: tabDrop 420ms 300ms cubic-bezier(.2, .8, .25, 1.15) backwards; }
+.menu-corner-tabs.is-visible .changelog-button { animation-delay: 360ms; }
+
+.level-select-page .screen-topbar,
+.briefing-page .screen-topbar,
+.bestiary-page .screen-topbar,
+.catalog-page .screen-topbar,
+.about-page .screen-topbar,
+.changelog-page .screen-topbar {
+  animation: topbarArrive 320ms ease-out both;
+}
+
+.level-select-page .level-board-title { animation: noteArrive 400ms 90ms ease-out backwards; }
+.level-select-page .level-card { animation: cardArrive 400ms ease-out backwards; }
+.level-select-page .level-card:nth-child(1) { animation-delay: 160ms; }
+.level-select-page .level-card:nth-child(2) { animation-delay: 210ms; }
+.level-select-page .level-card:nth-child(3) { animation-delay: 260ms; }
+.level-select-page .level-card:nth-child(4) { animation-delay: 310ms; }
+.level-select-page .level-card:nth-child(5) { animation-delay: 360ms; }
+
+.briefing-page .briefing-sheet { animation: softRise 420ms 80ms ease-out backwards; }
+.briefing-page .briefing-sheet > h1 { animation: wordmarkPop 380ms 150ms ease-out both; }
+.briefing-page .briefing-sheet > p { animation: gentleFade 280ms 220ms ease-out both; }
+.briefing-page .briefing-type-card { animation: cardArrive 380ms ease-out backwards; }
+.briefing-page .briefing-type-card:nth-child(1) { animation-delay: 280ms; }
+.briefing-page .briefing-type-card:nth-child(2) { animation-delay: 350ms; }
+.briefing-page .briefing-start { animation: softRise 340ms 430ms ease-out backwards; }
+
+.bestiary-page .bestiary-module { animation: cardArrive 440ms ease-out backwards; }
+.bestiary-page .cat-module { animation-delay: 100ms; }
+.bestiary-page .enemy-module { animation-delay: 180ms; }
+.bestiary-page .bestiary-module > img { animation: bestiaryImagePop 440ms 280ms ease-out backwards; }
+
+.catalog-page .catalog-entry { animation: cardArrive 340ms ease-out backwards; }
+.catalog-page .catalog-entry:nth-child(1) { animation-delay: 70ms; }
+.catalog-page .catalog-entry:nth-child(2) { animation-delay: 100ms; }
+.catalog-page .catalog-entry:nth-child(3) { animation-delay: 130ms; }
+.catalog-page .catalog-entry:nth-child(4) { animation-delay: 160ms; }
+.catalog-page .catalog-entry:nth-child(5) { animation-delay: 190ms; }
+.catalog-page .catalog-entry:nth-child(6) { animation-delay: 220ms; }
+.catalog-page .catalog-entry:nth-child(7) { animation-delay: 250ms; }
+.catalog-page .catalog-entry:nth-child(8) { animation-delay: 280ms; }
+.catalog-page .catalog-entry:nth-child(9) { animation-delay: 310ms; }
+.catalog-page .catalog-entry:nth-child(10) { animation-delay: 340ms; }
+.catalog-page .catalog-entry:nth-child(11) { animation-delay: 370ms; }
+.catalog-page .catalog-entry:nth-child(12) { animation-delay: 400ms; }
+
+.about-page .info-sheet > .game-wordmark { animation: wordmarkPop 400ms 80ms ease-out both; }
+.about-page .about-grid article { animation: softRise 360ms ease-out backwards; }
+.about-page .about-grid article:nth-child(1) { animation-delay: 160ms; }
+.about-page .about-grid article:nth-child(2) { animation-delay: 220ms; }
+.about-page .about-grid article:nth-child(3) { animation-delay: 280ms; }
+.about-page .about-grid article:nth-child(4) { animation-delay: 340ms; }
+
+.changelog-page .changelog-sheet > h1 { animation: softRise 360ms 90ms ease-out both; }
+.changelog-page .changelog-entry { animation: cardArrive 400ms 180ms ease-out backwards; }
+
+@keyframes gentleFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes softRise {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes topbarArrive {
+  from { opacity: 0; transform: translateY(-14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes noteArrive {
+  from { opacity: 0; transform: translateY(20px) scale(.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes cardArrive {
+  from { opacity: 0; transform: translateY(16px) scale(.975); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes characterFromLeft {
+  from { opacity: 0; transform: translateX(-40px) scale(.92) rotate(-24deg); }
+  to { opacity: 1; transform: translateX(0) scale(1) rotate(-24deg); }
+}
+
+@keyframes characterFromRight {
+  from { opacity: 0; transform: translateX(38px) scale(.92) rotate(7deg); }
+  to { opacity: 1; transform: translateX(0) scale(1) rotate(7deg); }
+}
+
+@keyframes wordmarkPop {
+  from { opacity: 0; transform: scale(.86); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes mainWordmarkArrive {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(.86); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes bestiaryImagePop {
+  from { opacity: 0; transform: translateY(-50%) scale(.86); }
+  to { opacity: 1; transform: translateY(-50%) scale(1); }
+}
+
+@keyframes stretchIn {
+  from { opacity: 0; transform: scaleX(.5); }
+  to { opacity: 1; transform: scaleX(1); }
+}
+
+@keyframes pinDrop {
+  from { opacity: 0; transform: translateY(-12px) scale(.7); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes tabDrop {
+  from { opacity: 0; transform: translateY(-30px) rotate(0); }
+  to { opacity: 1; transform: translateY(0) rotate(3deg); }
+}
+
+.menu-corner-tabs.is-visible .changelog-button {
+  animation-name: tabDropOpposite;
+}
+
+@keyframes tabDropOpposite {
+  from { opacity: 0; transform: translateY(-30px) rotate(0); }
+  to { opacity: 1; transform: translateY(0) rotate(-3deg); }
+}
+
+@media (max-width: 900px) {
+  .main-menu-wordmark { left: 37%; top: 46%; }
+}
+
+@media (max-width: 620px) {
+  .main-menu-wordmark {
+    left: 50%;
+    top: 43%;
+    width: 155px;
+  }
+
+  .main-menu-card.paper-card { transform: translateY(7%); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
