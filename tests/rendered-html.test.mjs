@@ -37,17 +37,23 @@ test("keeps the game configuration and starter cleanup verifiable", async () => 
     readFile(new URL("../package.json", import.meta.url), "utf8"),
   ]);
 
-  assert.match(game, /totalEnemies:\s*18/);
+  assert.match(game, /const LEVELS = \[/);
+  assert.equal((game.match(/id: "1-[1-5]"/g) ?? []).length, 5);
+  assert.match(game, /difficulty:\s*1/);
+  assert.match(game, /difficulty:\s*5/);
   assert.match(game, /lanes:\s*5/);
   assert.match(game, /requestAnimationFrame/);
-  assert.match(game, /localStorage\.setItem\("hua-vs-luca-best"/);
+  assert.match(game, /LEVEL_PROGRESS_STORAGE_KEY = "hua-vs-luca-level-progress-v1"/);
+  assert.match(game, /localStorage\.setItem\(LEVEL_PROGRESS_STORAGE_KEY/);
+  assert.match(game, /completed:\s*true/);
   assert.match(game, /hua-bowl-\$\{ball\.skin\}/);
   assert.match(game, /type Screen = "loading" \| "main-menu" \| "level-select" \| "game"/);
-  assert.match(game, /className="level-card is-open"/);
+  assert.match(game, /className=\{`level-card is-open/);
+  assert.match(game, /completion-label/);
   assert.match(game, /Promise\.all\(GAME_ASSET_URLS\.map\(loadAsset\)\)/);
   assert.doesNotMatch(game, /addEventListener\("keydown"/);
   assert.match(page, /<HuaVsLucaGame \/>/);
   assert.match(layout, /lang="zh-CN"/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
-  await assert.rejects(access(new URL("app\/_sites-preview", projectRoot)));
+  await assert.rejects(access(new URL("app/_sites-preview", projectRoot)));
 });

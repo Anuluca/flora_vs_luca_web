@@ -12,13 +12,48 @@ import Image from "next/image";
 
 const GAME = {
   lanes: 5,
-  totalEnemies: 18,
-  enemySpeed: 3.6,
   ballSpeed: 39,
   ballLaneSpeed: 4.5,
   cooldown: 0.62,
   homeLine: 18.5,
 } as const;
+
+type LevelConfig = {
+  id: `1-${number}`;
+  name: string;
+  description: string;
+  difficulty: 1 | 2 | 3 | 4 | 5;
+  totalEnemies: number;
+  enemySpeed: number;
+  huaSkins: readonly (1 | 2)[];
+};
+
+/**
+ * 所有关卡的展示信息与游戏参数集中维护，选关页和游戏逻辑共用同一份数据，
+ * 避免界面文案、敌人数量与实际难度分别散落在组件中。
+ */
+const LEVELS = [
+  { id: "1-1", name: "猫窝前院", description: "初次迎战", difficulty: 1, totalEnemies: 18, enemySpeed: 3.6, huaSkins: [1, 2, 1] },
+  { id: "1-2", name: "客厅防线", description: "快速来袭", difficulty: 2, totalEnemies: 20, enemySpeed: 3.85, huaSkins: [2, 1, 2] },
+  { id: "1-3", name: "走廊追击", description: "连续夹击", difficulty: 3, totalEnemies: 22, enemySpeed: 4.1, huaSkins: [1, 2, 1] },
+  { id: "1-4", name: "阳台乱斗", description: "高速攻防", difficulty: 4, totalEnemies: 24, enemySpeed: 4.35, huaSkins: [2, 1, 2] },
+  { id: "1-5", name: "终极守卫", description: "路卡总攻", difficulty: 5, totalEnemies: 26, enemySpeed: 4.6, huaSkins: [1, 2, 1] },
+] as const satisfies readonly LevelConfig[];
+
+type LevelId = (typeof LEVELS)[number]["id"];
+type LevelProgress = Record<LevelId, { bestScore: number; completed: boolean }>;
+
+const LEVEL_PROGRESS_STORAGE_KEY = "hua-vs-luca-level-progress-v1";
+
+function createEmptyLevelProgress(): LevelProgress {
+  return Object.fromEntries(
+    LEVELS.map((level) => [level.id, { bestScore: 0, completed: false }]),
+  ) as LevelProgress;
+}
+
+function getLevel(levelId: LevelId): LevelConfig {
+  return LEVELS.find((level) => level.id === levelId) ?? LEVELS[0];
+}
 
 const GAME_ASSET_URLS = [
   "/assets/hua-bowl-1.png",
@@ -59,6 +94,7 @@ type HitEffect = {
 };
 
 type GameModel = {
+  levelId: LevelId;
   phase: Phase;
   elapsed: number;
   score: number;
@@ -95,14 +131,14 @@ function clamp(value: number, min: number, max: number) {
 }
 
 /**
- * 每局重新生成敌人轨道与出现时间。总量保持为 18，避免无限刷怪，
- * 同时限制同一轨道连续出现，保证保龄球弹射路线有可读性。
+ * 每局按当前关卡配置生成敌人轨道与出现时间，并限制同一轨道连续出现，
+ * 保证不同难度使用独立敌人总量的同时，保留弹射路线的可读性。
  */
-function createEnemySchedule(): Enemy[] {
+function createEnemySchedule(level: LevelConfig): Enemy[] {
   let previousLane = -1;
   let repeated = 0;
 
-  return Array.from({ length: GAME.totalEnemies }, (_, index) => {
+  return Array.from({ length: level.totalEnemies }, (_, index) => {
     let lane = Math.floor(Math.random() * GAME.lanes);
 
     if (lane === previousLane) repeated += 1;
@@ -127,8 +163,9 @@ function createEnemySchedule(): Enemy[] {
   });
 }
 
-function createModel(phase: Phase = "menu"): GameModel {
+function createModel(level: LevelConfig = LEVELS[0], phase: Phase = "menu"): GameModel {
   return {
+    levelId: level.id as LevelId,
     phase,
     elapsed: 0,
     score: 0,
@@ -138,7 +175,7 @@ function createModel(phase: Phase = "menu"): GameModel {
     shots: 0,
     nextShotAt: 0,
     lastHitAt: -10,
-    enemies: createEnemySchedule(),
+    enemies: createEnemySchedule(level),
     balls: [],
     effects: [],
   };
@@ -194,9 +231,10 @@ export default function HuaVsLucaGame() {
 
   const [snapshot, setSnapshot] = useState<GameModel>(initialModel);
   const [screen, setScreen] = useState<Screen>("loading");
+  const [selectedLevelId, setSelectedLevelId] = useState<LevelId>(LEVELS[0].id);
   const [selectedLane, setSelectedLane] = useState(2);
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [bestScore, setBestScore] = useState(0);
+  const [levelProgress, setLevelProgress] = useState<LevelProgress>(createEmptyLevelProgress);
   const [decorations, setDecorations] = useState<Decoration[]>(initialDecorations);
   const [assetProgress, setAssetProgress] = useState(0);
   const [assetLoadFailed, setAssetLoadFailed] = useState(false);
@@ -252,30 +290,32 @@ export default function HuaVsLucaGame() {
     });
   }, []);
 
-  const startGame = useCallback(() => {
-    modelRef.current = createModel("playing");
+  const startGame = useCallback((levelId: LevelId = selectedLevelId) => {
+    const level = getLevel(levelId);
+    modelRef.current = createModel(level, "playing");
     previousFrameRef.current = null;
     syncAtRef.current = 0;
     setDecorations(createDecorations());
+    setSelectedLevelId(levelId);
     setLane(2);
     setScreen("game");
     playSound("roll");
     sync();
-  }, [playSound, setLane, sync]);
+  }, [playSound, selectedLevelId, setLane, sync]);
 
   const goToMainMenu = useCallback(() => {
-    modelRef.current = createModel("menu");
+    modelRef.current = createModel(getLevel(selectedLevelId), "menu");
     previousFrameRef.current = null;
     setScreen("main-menu");
     sync();
-  }, [sync]);
+  }, [selectedLevelId, sync]);
 
   const goToLevelSelect = useCallback(() => {
-    modelRef.current = createModel("menu");
+    modelRef.current = createModel(getLevel(selectedLevelId), "menu");
     previousFrameRef.current = null;
     setScreen("level-select");
     sync();
-  }, [sync]);
+  }, [selectedLevelId, sync]);
 
   const togglePause = useCallback(() => {
     const model = modelRef.current;
@@ -334,9 +374,32 @@ export default function HuaVsLucaGame() {
   );
 
   useEffect(() => {
-    const saved = Number(window.localStorage.getItem("hua-vs-luca-best") ?? 0);
+    const emptyProgress = createEmptyLevelProgress();
+    const legacyBestScore = Number(window.localStorage.getItem("hua-vs-luca-best") ?? 0);
+    const saved = window.localStorage.getItem(LEVEL_PROGRESS_STORAGE_KEY);
     const timer = window.setTimeout(() => {
-      if (Number.isFinite(saved)) setBestScore(saved);
+      try {
+        const parsed = saved ? JSON.parse(saved) as Partial<LevelProgress> : {};
+        const restored = Object.fromEntries(
+          LEVELS.map((level) => {
+            const levelData = parsed[level.id];
+            const migratedBest = level.id === "1-1" && Number.isFinite(legacyBestScore)
+              ? legacyBestScore
+              : 0;
+            return [
+              level.id,
+              {
+                bestScore: Math.max(0, Number(levelData?.bestScore ?? migratedBest) || 0),
+                completed: Boolean(levelData?.completed),
+              },
+            ];
+          }),
+        ) as LevelProgress;
+        setLevelProgress(restored);
+        window.localStorage.setItem(LEVEL_PROGRESS_STORAGE_KEY, JSON.stringify(restored));
+      } catch {
+        setLevelProgress(emptyProgress);
+      }
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);
@@ -396,12 +459,13 @@ export default function HuaVsLucaGame() {
       previousFrameRef.current = timestamp;
 
       if (model.phase === "playing") {
+        const activeLevel = getLevel(model.levelId);
         model.elapsed += delta;
 
         for (const enemy of model.enemies) {
           if (!enemy.spawned && enemy.spawnAt <= model.elapsed) enemy.spawned = true;
           if (enemy.spawned && !enemy.defeated) {
-            enemy.x -= GAME.enemySpeed * delta * (1 + enemy.variant * 0.035);
+            enemy.x -= activeLevel.enemySpeed * delta * (1 + enemy.variant * 0.035);
           }
         }
 
@@ -445,11 +509,19 @@ export default function HuaVsLucaGame() {
         model.effects = model.effects.filter((effect) => effect.expiresAt > model.elapsed);
         if (model.elapsed - model.lastHitAt > 1.45) model.combo = 0;
 
-        if (model.defeated >= GAME.totalEnemies) {
+        if (model.defeated >= activeLevel.totalEnemies) {
           model.phase = "victory";
-          const nextBest = Math.max(bestScore, model.score);
-          setBestScore(nextBest);
-          window.localStorage.setItem("hua-vs-luca-best", String(nextBest));
+          setLevelProgress((current) => {
+            const next = {
+              ...current,
+              [model.levelId]: {
+                bestScore: Math.max(current[model.levelId].bestScore, model.score),
+                completed: true,
+              },
+            };
+            window.localStorage.setItem(LEVEL_PROGRESS_STORAGE_KEY, JSON.stringify(next));
+            return next;
+          });
           playSound("win");
         } else if (
           model.enemies.some(
@@ -473,26 +545,12 @@ export default function HuaVsLucaGame() {
     return () => {
       if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current);
     };
-  }, [bestScore, playSound, sync]);
+  }, [playSound, sync]);
 
+  const activeLevel = getLevel(snapshot.levelId);
   const liveEnemies = snapshot.enemies.filter((enemy) => enemy.spawned && !enemy.defeated);
-  const remaining = GAME.totalEnemies - snapshot.defeated;
-  const progress = (snapshot.defeated / GAME.totalEnemies) * 100;
-  const cooldown = clamp(
-    1 - Math.max(0, snapshot.nextShotAt - snapshot.elapsed) / GAME.cooldown,
-    0,
-    1,
-  );
-  const statusText =
-    snapshot.phase === "playing"
-      ? `剩余 ${remaining} 个路卡`
-      : snapshot.phase === "paused"
-        ? "游戏已暂停"
-        : snapshot.phase === "victory"
-          ? "1-1 通关"
-          : snapshot.phase === "defeat"
-            ? "猫窝失守"
-            : "等待开始";
+  const progress = (snapshot.defeated / activeLevel.totalEnemies) * 100;
+  const currentBestScore = levelProgress[snapshot.levelId].bestScore;
 
   return (
     <main className="page-shell">
@@ -523,13 +581,9 @@ export default function HuaVsLucaGame() {
       {screen === "main-menu" && (
         <section className="game-cabinet front-page" aria-label="花花对战路卡主菜单">
           <div className="front-page-noise" aria-hidden="true" />
-          <header className="screen-topbar">
-            <strong>最高分 {String(bestScore).padStart(5, "0")}</strong>
-          </header>
 
           <div className="front-page-layout">
             <div className="front-art" aria-hidden="true">
-              <span className="front-scribble">ROLL!</span>
               <Image
                 className="front-hua"
                 src="/assets/hua-bowl-1.png"
@@ -544,35 +598,25 @@ export default function HuaVsLucaGame() {
                 <Image src="/assets/luca-head.png" alt="" width={288} height={237} priority unoptimized />
                 <span />
               </div>
-              <i className="motion-line line-one" />
-              <i className="motion-line line-two" />
-              <i className="motion-line line-three" />
             </div>
 
             <div className="paper-card main-menu-card">
               <span className="pin pin-left" />
               <span className="pin pin-right" />
-              <h1>花花 <em>vs</em> 路卡</h1>
+              <h1><span>花花</span><em>VS</em><span>路卡</span></h1>
               <p className="menu-tagline">滚动花花，弹飞路卡。</p>
               <nav className="main-menu-actions" aria-label="主菜单操作">
                 <button className="primary-button" type="button" onClick={goToLevelSelect}>
                   <span>▶</span> 开始游戏
                 </button>
-                <button className="menu-secondary-button" type="button" onClick={goToLevelSelect}>
-                  选择关卡 <span>→</span>
-                </button>
               </nav>
-              <div className="menu-rule">
-                <span>目标</span>
-                <strong>清除全部路卡</strong>
-                <i>18 ENEMIES</i>
-              </div>
             </div>
           </div>
 
-          <footer className="front-page-footer">
+          <div className="front-page-meta">
             <span>使用鼠标选择关卡 · 点击跑道发射花花</span>
-          </footer>
+            <strong>©2026 Anuluca</strong>
+          </div>
         </section>
       )}
 
@@ -580,11 +624,8 @@ export default function HuaVsLucaGame() {
         <section className="game-cabinet level-select-page" aria-label="选择关卡">
           <header className="screen-topbar level-topbar">
             <button type="button" onClick={goToMainMenu} aria-label="返回主菜单">← 返回</button>
-            <div>
-              <span>CHAPTER 01</span>
-              <strong>选择关卡</strong>
-            </div>
-            <i>猫窝外围</i>
+            <strong>选择关卡</strong>
+            <span aria-hidden="true" />
           </header>
 
           <div className="level-board">
@@ -593,51 +634,67 @@ export default function HuaVsLucaGame() {
               <span className="tape tape-two" />
               <p>第一章</p>
               <h1>路卡来袭</h1>
-              <small>目前开放 1 个关卡</small>
+              <small>共 5 个关卡</small>
             </div>
 
             <div className="level-grid">
-              <button className="level-card is-open" type="button" onClick={startGame}>
-                <span className="level-number">1-1</span>
-                <div className="level-preview" aria-hidden="true">
-                  <Image src="/assets/scratcher-house.png" alt="" width={675} height={900} unoptimized />
-                  <Image src="/assets/luca-head.png" alt="" width={288} height={237} unoptimized />
-                </div>
-                <strong>猫窝前院</strong>
-                <small>18 个路卡 · 五条跑道</small>
-                <i>可挑战</i>
-              </button>
-
-              {["1-2", "1-3", "1-4", "1-5", "1-6"].map((level) => (
-                <button className="level-card is-locked" type="button" key={level} disabled>
-                  <span className="level-number">{level}</span>
-                  <div className="locked-mark" aria-hidden="true">×</div>
-                  <strong>尚未开放</strong>
-                  <small>等待后续章节</small>
-                  <i>LOCKED</i>
+              {LEVELS.map((level) => (
+                <button
+                  className={`level-card is-open${levelProgress[level.id].completed ? " is-completed" : ""}`}
+                  type="button"
+                  key={level.id}
+                  onClick={() => startGame(level.id)}
+                >
+                  <span className="level-number">{level.id}</span>
+                  <div className="level-avatar-stack" aria-hidden="true">
+                    {level.huaSkins.map((skin, index) => (
+                      <Image
+                        key={`${level.id}-${index}`}
+                        src={`/assets/hua-bowl-${skin}.png`}
+                        alt=""
+                        width={747}
+                        height={900}
+                        unoptimized
+                      />
+                    ))}
+                  </div>
+                  <strong>{level.name}</strong>
+                  <small>{level.description} · 最高分 {String(levelProgress[level.id].bestScore).padStart(5, "0")}</small>
+                  <div className="level-difficulty" aria-label={`难度 ${level.difficulty} 星`}>
+                    <span>难度</span>
+                    <div aria-hidden="true">
+                      {Array.from({ length: 5 }, (_, index) => (
+                        <Image
+                          className={index < level.difficulty ? "is-active" : ""}
+                          key={index}
+                          src="/assets/luca-head.png"
+                          alt=""
+                          width={288}
+                          height={237}
+                          unoptimized
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  {levelProgress[level.id].completed && <i className="completion-label">已完成</i>}
                 </button>
               ))}
             </div>
           </div>
-
-          <footer className="level-page-footer">
-            <span>选择 1-1 开始挑战</span>
-            <strong>BEST {String(bestScore).padStart(5, "0")}</strong>
-          </footer>
         </section>
       )}
 
       {screen === "game" && (
-      <section className="game-cabinet" aria-label="花花对战路卡网页游戏">
+      <section className="game-cabinet game-page" aria-label="花花对战路卡网页游戏">
         <header className="game-hud">
           <div className="brand-lockup" aria-label="花花 vs 路卡">
             <span className="brand-title">花花 <i>VS</i> 路卡</span>
           </div>
 
-          <div className="level-progress" aria-label={`关卡进度 ${snapshot.defeated}/${GAME.totalEnemies}`}>
+          <div className="level-progress" aria-label={`关卡进度 ${Math.round(progress)}%`}>
             <div className="level-copy">
-              <span>关卡 1-1</span>
-              <strong>{snapshot.defeated}/{GAME.totalEnemies}</strong>
+              <span>关卡 {activeLevel.id}</span>
+              <strong>{Math.round(progress)}%</strong>
             </div>
             <div className="progress-track">
               <span style={{ width: `${progress}%` }} />
@@ -648,19 +705,10 @@ export default function HuaVsLucaGame() {
           <div className="score-block">
             <span>分数</span>
             <strong>{String(snapshot.score).padStart(5, "0")}</strong>
-            <small>BEST {String(bestScore).padStart(5, "0")}</small>
+            <small>BEST {String(currentBestScore).padStart(5, "0")}</small>
           </div>
 
           <div className="hud-actions">
-            <button
-              className="icon-button"
-              type="button"
-              onClick={goToLevelSelect}
-              aria-label="返回选关"
-              title="返回选关"
-            >
-              ⌂
-            </button>
             <button
               className="icon-button"
               type="button"
@@ -688,14 +736,13 @@ export default function HuaVsLucaGame() {
           style={{ "--selected-lane": selectedLane } as CSSProperties}
         >
           <div className="paper-noise" aria-hidden="true" />
-          <div className="back-wall" aria-hidden="true">
+          <div className="danger-note" aria-hidden="true">
             <span className="tape tape-one" />
             <span className="tape tape-two" />
-            <p>滚 动 即 攻 击</p>
+            <p>冲过红线则游戏结束</p>
           </div>
 
           <div className="home-zone" aria-hidden="true">
-            <span className="home-label">花花的窝</span>
             <Image
               className="scratcher-house"
               src="/assets/scratcher-house.png"
@@ -705,6 +752,7 @@ export default function HuaVsLucaGame() {
               priority
               unoptimized
             />
+            <span className="home-label">花花的窝</span>
             <div className="treats-on-house">
               {decorations.map((decoration) => (
                 <Image
@@ -811,12 +859,6 @@ export default function HuaVsLucaGame() {
             ))}
           </div>
 
-          {snapshot.phase === "playing" && snapshot.shots < 2 && (
-            <div className="tutorial-note" aria-hidden="true">
-              <b>点击跑道发射</b>
-            </div>
-          )}
-
           {snapshot.combo > 1 && snapshot.phase === "playing" && (
             <div className="combo-badge" aria-live="polite">
               <span>连撞</span>
@@ -831,7 +873,7 @@ export default function HuaVsLucaGame() {
                 <p>先喘口气！路卡也被定住了！</p>
                 <div className="pause-actions">
                   <button className="primary-button" type="button" onClick={togglePause}>继续游戏</button>
-                  <button className="primary-button is-khaki" type="button" onClick={startGame}>重新开始</button>
+                  <button className="primary-button is-khaki" type="button" onClick={() => startGame()}>重新开始</button>
                   <button className="primary-button is-khaki" type="button" onClick={goToLevelSelect}>返回选关</button>
                 </div>
               </div>
@@ -843,13 +885,13 @@ export default function HuaVsLucaGame() {
               <div className="paper-card result-card">
                 <span className="result-stamp">CLEAR!</span>
                 <p className="eyebrow">猫窝守住了</p>
-                <h2>1-1 通关</h2>
+                <h2>{activeLevel.id} 通关</h2>
                 <div className="result-grid">
                   <span>最终得分<strong>{snapshot.score}</strong></span>
                   <span>最高连撞<strong>×{snapshot.bestCombo}</strong></span>
                   <span>发射次数<strong>{snapshot.shots}</strong></span>
                 </div>
-                <button className="primary-button" type="button" onClick={startGame}>再来一局</button>
+                <button className="primary-button" type="button" onClick={() => startGame()}>再来一局</button>
                 <button className="text-button" type="button" onClick={goToLevelSelect}>返回选关</button>
               </div>
             </div>
@@ -861,8 +903,8 @@ export default function HuaVsLucaGame() {
                 <span className="result-stamp bad-stamp">OOPS!</span>
                 <p className="eyebrow">有路卡溜进来了</p>
                 <h2>猫窝失守</h2>
-                <p>已赶走 {snapshot.defeated} / {GAME.totalEnemies} 个路卡</p>
-                <button className="primary-button" type="button" onClick={startGame}>重新挑战</button>
+                <p>已赶走 {snapshot.defeated} / {activeLevel.totalEnemies} 个路卡</p>
+                <button className="primary-button" type="button" onClick={() => startGame()}>重新挑战</button>
                 <button className="text-button" type="button" onClick={goToLevelSelect}>返回选关</button>
               </div>
             </div>
@@ -870,31 +912,9 @@ export default function HuaVsLucaGame() {
         </div>
 
         <footer className="game-controls">
-          <div className="danger-warning">
-            <span />
-            <strong>冲过红线则游戏结束</strong>
-          </div>
-          <button
-            className="launch-button"
-            type="button"
-            onClick={() => shoot()}
-            disabled={snapshot.phase !== "playing" || cooldown < 1}
-            aria-label="发射花花"
-            style={{ "--charge": `${cooldown * 100}%` } as CSSProperties}
-          >
-            <span>发射花花</span>
-            <i>{cooldown >= 1 ? "READY" : "滚动中"}</i>
-          </button>
-          <div className="status-strip" aria-live="polite">
-            <span className={`status-dot phase-${snapshot.phase}`} />
-            <strong>{statusText}</strong>
-          </div>
+          <p>点击任意跑道即可瞄准并发射 · 建议横屏游玩</p>
         </footer>
       </section>
-      )}
-
-      {screen === "game" && (
-        <p className="page-note">点击任意跑道即可瞄准并发射 · 建议横屏游玩</p>
       )}
     </main>
   );
