@@ -23,12 +23,9 @@ test("server-renders the complete Hua vs Luca game shell", async () => {
 
   const html = await response.text();
   assert.match(html, /<html[^>]+lang="zh-CN"/i);
-  assert.match(html, /<title>花花 vs 路卡｜猫窝保卫战<\/title>/i);
-  assert.match(html, /花花/);
-  assert.match(html, /路卡/);
-  assert.match(html, /开始游戏/);
-  assert.match(html, /选择关卡/);
-  assert.match(html, /18 ENEMIES/);
+  assert.match(html, /<title>花花 vs 路卡｜猫咪保龄战<\/title>/i);
+  assert.match(html, /资源准备中/);
+  assert.match(html, /正在提前加载并解码全部游戏图片/);
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape|SkeletonPreview/);
 });
 
@@ -45,8 +42,10 @@ test("keeps the game configuration and starter cleanup verifiable", async () => 
   assert.match(game, /requestAnimationFrame/);
   assert.match(game, /localStorage\.setItem\("hua-vs-luca-best"/);
   assert.match(game, /hua-bowl-\$\{ball\.skin\}/);
-  assert.match(game, /type Screen = "main-menu" \| "level-select" \| "game"/);
+  assert.match(game, /type Screen = "loading" \| "main-menu" \| "level-select" \| "game"/);
   assert.match(game, /className="level-card is-open"/);
+  assert.match(game, /Promise\.all\(GAME_ASSET_URLS\.map\(loadAsset\)\)/);
+  assert.doesNotMatch(game, /addEventListener\("keydown"/);
   assert.match(page, /<HuaVsLucaGame \/>/);
   assert.match(layout, /lang="zh-CN"/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);

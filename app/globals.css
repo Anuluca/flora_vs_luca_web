@@ -100,6 +100,71 @@ button:focus-visible {
   overflow: hidden;
 }
 
+.loading-page {
+  position: relative;
+  min-height: min(620px, 78vh);
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at center, rgba(246, 237, 219, 0.3), transparent 62%),
+    repeating-linear-gradient(0deg, transparent 0 27px, rgba(66, 50, 41, 0.06) 27px 28px),
+    #a69178;
+}
+
+.loading-paper {
+  position: relative;
+  width: min(470px, 88%);
+  padding: 47px 42px 39px;
+  border: 5px solid var(--ink);
+  background: var(--paper-light);
+  box-shadow: 8px 9px 0 rgba(43, 33, 28, 0.42);
+  text-align: center;
+  transform: rotate(-0.8deg);
+}
+
+.loading-paper p,
+.loading-paper h1,
+.loading-paper strong,
+.loading-paper small {
+  display: block;
+  margin: 0;
+}
+
+.loading-paper p {
+  color: var(--red-dark);
+  font-size: 11px;
+  font-weight: 1000;
+  letter-spacing: 0.14em;
+}
+
+.loading-paper h1 {
+  margin-top: 5px;
+  font-size: clamp(32px, 5vw, 52px);
+  letter-spacing: -0.09em;
+  text-shadow: 3px 3px 0 #d2bea0;
+}
+
+.asset-progress {
+  height: 20px;
+  margin: 25px 0 9px;
+  overflow: hidden;
+  border: 4px solid var(--ink);
+  background: #695a50;
+  box-shadow: inset 0 3px 0 rgba(0, 0, 0, 0.22);
+}
+
+.asset-progress span {
+  display: block;
+  width: 0;
+  height: 100%;
+  background: repeating-linear-gradient(135deg, #bf8740 0 9px, #e2b653 9px 16px);
+  transition: width 130ms ease-out;
+}
+
+.loading-paper > strong { font-size: 16px; }
+.loading-paper > small { margin-top: 4px; color: #746256; font-size: 9px; font-weight: 900; }
+.loading-paper .primary-button { margin-top: 20px; }
+
 .front-page,
 .level-select-page {
   position: relative;
@@ -136,6 +201,10 @@ button:focus-visible {
   font-size: 10px;
   font-weight: 1000;
   letter-spacing: 0.12em;
+}
+
+.front-page > .screen-topbar {
+  justify-content: flex-end;
 }
 
 .screen-topbar strong {
@@ -790,12 +859,13 @@ button:focus-visible {
 
 .scratcher-house {
   position: absolute;
-  left: -5%;
+  left: 50%;
   bottom: -2%;
-  width: 110%;
+  width: 96%;
   height: 98%;
   object-fit: contain;
   object-position: center bottom;
+  transform: translateX(-50%);
   filter:
     saturate(0.73)
     contrast(1.08)
@@ -807,7 +877,7 @@ button:focus-visible {
 .treats-on-house {
   position: absolute;
   z-index: 4;
-  inset: 10% 12% 22% 8%;
+  inset: 26% 18% 27% 18%;
 }
 
 .treats-on-house img {
@@ -959,29 +1029,45 @@ button:focus-visible {
   position: absolute;
   z-index: 3;
   display: block;
-  width: 8px;
   border: 3px solid var(--ink);
   border-radius: 8px;
   background: #ded1b7;
-  transform-origin: 50% 0;
 }
 
 .enemy-arm {
-  top: 39px;
-  height: 35px;
+  z-index: 5;
+  left: -5px;
+  width: 31px;
+  height: 9px;
+  transform-origin: 100% 50%;
 }
 
-.enemy-arm-left { left: 16px; transform: rotate(24deg); animation: armWalk 0.38s steps(2, end) infinite; }
-.enemy-arm-right { right: 12px; transform: rotate(-31deg); animation: armWalk 0.38s steps(2, end) -0.19s infinite reverse; }
+.enemy-arm::before {
+  content: "";
+  position: absolute;
+  left: -6px;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: #ded1b7;
+  transform: translateY(-50%);
+}
+
+.enemy-arm-left { top: 43px; animation: reachGrabUpper 0.34s ease-in-out infinite alternate; }
+.enemy-arm-right { top: 51px; animation: reachGrabLower 0.34s ease-in-out -0.17s infinite alternate; }
 
 .enemy-leg {
-  top: 66px;
-  height: 27px;
+  top: 69px;
+  width: 9px;
+  height: 31px;
   background: #4d4544;
+  transform-origin: 50% 0;
 }
 
-.enemy-leg-left { left: 27px; transform: rotate(13deg); animation: legWalk 0.38s steps(2, end) infinite; }
-.enemy-leg-right { right: 19px; transform: rotate(-15deg); animation: legWalk 0.38s steps(2, end) -0.19s infinite reverse; }
+.enemy-leg-left { left: 29px; z-index: 4; animation: legCrossLeft 0.34s ease-in-out infinite alternate; }
+.enemy-leg-right { left: 38px; z-index: 3; animation: legCrossRight 0.34s ease-in-out infinite alternate; }
 
 .enemy-shadow {
   position: absolute;
@@ -999,9 +1085,20 @@ button:focus-visible {
   width: 62px;
   height: 78px;
   pointer-events: none;
+  will-change: left, top;
 }
 
-.hua-ball img {
+.hua-ball-sprite {
+  width: 100%;
+  height: 100%;
+  animation: huaRoll 0.72s linear infinite;
+  transform: translateZ(0);
+  transform-origin: 50% 50%;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+.hua-ball-sprite img {
   display: block;
   width: 100%;
   height: 100%;
@@ -1126,8 +1223,7 @@ button:focus-visible {
   transform: rotate(-0.8deg);
 }
 
-.paper-card::before,
-.paper-card::after {
+.paper-card::before {
   content: "";
   position: absolute;
   z-index: -1;
@@ -1138,15 +1234,6 @@ button:focus-visible {
 .paper-card::before {
   inset: 8px -11px -10px 12px;
   transform: rotate(2deg);
-}
-
-.paper-card::after {
-  width: 70px;
-  height: 42px;
-  right: -28px;
-  bottom: 21px;
-  background: #d9b398;
-  transform: rotate(-8deg);
 }
 
 .pin {
@@ -1258,6 +1345,20 @@ button:focus-visible {
   box-shadow: 2px 2px 0 var(--red-dark);
 }
 
+.primary-button.is-khaki {
+  color: #312a25;
+  background: #b9a171;
+  box-shadow: 5px 5px 0 #736142;
+}
+
+.primary-button.is-khaki:hover {
+  box-shadow: 7px 7px 0 #736142;
+}
+
+.primary-button.is-khaki:active {
+  box-shadow: 2px 2px 0 #736142;
+}
+
 .primary-button span {
   display: inline-block;
   margin-right: 6px;
@@ -1275,18 +1376,6 @@ button:focus-visible {
   font-weight: 900;
 }
 
-kbd {
-  display: inline-block;
-  margin: 0 1px;
-  padding: 2px 5px;
-  border: 2px solid #5f554e;
-  border-radius: 3px;
-  background: #d8cbb7;
-  box-shadow: 0 2px 0 #83766b;
-  color: #332e2b;
-  font-family: inherit;
-}
-
 .result-card {
   max-width: 500px;
 }
@@ -1295,6 +1384,16 @@ kbd {
   margin: 13px 0 18px;
   color: #5d5047;
   font-weight: 800;
+}
+
+.pause-actions {
+  display: grid;
+  justify-content: center;
+  gap: 12px;
+}
+
+.pause-actions .primary-button {
+  width: 220px;
 }
 
 .result-stamp {
@@ -1360,48 +1459,21 @@ kbd {
     var(--paper-light);
 }
 
-.mobile-lane-controls {
+.danger-warning {
   display: flex;
   align-items: center;
-  gap: 7px;
-}
-
-.mobile-lane-controls button {
-  width: 42px;
-  height: 42px;
-  border: 3px solid var(--ink);
-  border-radius: 4px;
-  background: #d8c8ac;
-  box-shadow: 3px 3px 0 #837568;
-  font-size: 19px;
+  align-self: stretch;
+  gap: 9px;
+  color: var(--red-dark);
+  font-size: 11px;
   font-weight: 1000;
-  cursor: pointer;
 }
 
-.mobile-lane-controls button:active {
-  transform: translate(2px, 2px);
-  box-shadow: 1px 1px 0 #837568;
-}
-
-.mobile-lane-controls div {
-  min-width: 48px;
-  text-align: center;
-}
-
-.mobile-lane-controls span,
-.mobile-lane-controls strong {
-  display: block;
-}
-
-.mobile-lane-controls span {
-  color: #756457;
-  font-size: 8px;
-  font-weight: 900;
-}
-
-.mobile-lane-controls strong {
-  font-size: 24px;
-  line-height: 1;
+.danger-warning span {
+  width: 11px;
+  height: 28px;
+  border: 2px solid var(--ink);
+  background: repeating-linear-gradient(0deg, var(--red) 0 5px, #e4c7a5 5px 9px);
 }
 
 .launch-button {
@@ -1483,15 +1555,32 @@ kbd {
 }
 
 @keyframes enemyBob {
-  50% { transform: translate(-50%, -53%) rotate(-1deg); }
+  50% { transform: translate(-50%, -53%) rotate(-2deg); }
 }
 
-@keyframes armWalk {
-  50% { transform: rotate(-28deg); }
+@keyframes reachGrabUpper {
+  from { transform: rotate(-10deg) translateX(0); }
+  to { transform: rotate(-3deg) translateX(-5px); }
 }
 
-@keyframes legWalk {
-  50% { transform: rotate(-17deg) translateY(2px); }
+@keyframes reachGrabLower {
+  from { transform: rotate(9deg) translateX(-2px); }
+  to { transform: rotate(2deg) translateX(-7px); }
+}
+
+@keyframes legCrossLeft {
+  from { transform: rotate(31deg) translateY(0); }
+  to { transform: rotate(-29deg) translateY(2px); }
+}
+
+@keyframes legCrossRight {
+  from { transform: rotate(-31deg) translateY(2px); }
+  to { transform: rotate(29deg) translateY(0); }
+}
+
+@keyframes huaRoll {
+  from { transform: translateZ(0) rotate(0deg); }
+  to { transform: translateZ(0) rotate(360deg); }
 }
 
 @keyframes hitPop {
@@ -1645,8 +1734,8 @@ kbd {
   }
 
   .home-label { display: none; }
-  .scratcher-house { left: -17%; width: 125%; }
-  .treats-on-house { inset: 11% 8% 25% 0; }
+  .scratcher-house { left: 50%; width: 108%; }
+  .treats-on-house { inset: 27% 16% 29% 16%; }
   .treats-on-house img { width: 16px; height: 44px; }
 
   .luca-enemy {
@@ -1689,7 +1778,7 @@ kbd {
 
   .status-strip { display: none; }
   .launch-button { min-width: 0; width: 100%; }
-  .mobile-lane-controls { justify-content: center; }
+  .danger-warning { font-size: 9px; }
   .page-note { display: none; }
 }
 
