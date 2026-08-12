@@ -4,8 +4,8 @@ import type { EnemyTypeConfig } from "../domain/config-types";
 export const ENEMY_TYPES = {
   luca: {
     id: "luca",
-    name: "路卡",
-    description: "这个路卡就是逊啦。",
+    name: { zh: "路卡", en: "Luca" },
+    description: { zh: "这个路卡就是逊啦。", en: "This Luca is such a loser." },
     strength: 1,
     imageAssets: ["/assets/luca-head.png"],
     headAsset: "/assets/luca-head.png",

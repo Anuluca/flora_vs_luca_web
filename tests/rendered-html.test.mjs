@@ -23,7 +23,7 @@ test("server-renders the complete Hua vs Luca game shell", async () => {
 
   const html = await response.text();
   assert.match(html, /<html[^>]+lang="zh-CN"/i);
-  assert.match(html, /<title>花花 vs 路卡｜<\/title>/i);
+  assert.match(html, /<title>花花vs路卡 \| Anutrium Games<\/title>/i);
   assert.match(html, /等一下!/);
   assert.match(html, /花花正在睡觉/);
   assert.match(html, /https:\/\/flora-ball\.anuluca\.com/);
@@ -33,7 +33,7 @@ test("server-renders the complete Hua vs Luca game shell", async () => {
 });
 
 test("keeps the game configuration and project boundaries verifiable", async () => {
-  const [game, globals, cats, enemies, levels, model, storage, configTypes, page, layout, vite, packageJson] = await Promise.all([
+  const [game, globals, cats, enemies, levels, model, storage, configTypes, i18n, confirmDialog, page, layout, vite, packageJson] = await Promise.all([
     readFile(new URL("../app/HuaVsLucaGame.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
     readFile(new URL("../features/game/config/cats.ts", import.meta.url), "utf8"),
@@ -42,6 +42,8 @@ test("keeps the game configuration and project boundaries verifiable", async () 
     readFile(new URL("../features/game/domain/model.ts", import.meta.url), "utf8"),
     readFile(new URL("../features/game/infrastructure/progress-storage.ts", import.meta.url), "utf8"),
     readFile(new URL("../features/game/domain/config-types.ts", import.meta.url), "utf8"),
+    readFile(new URL("../features/game/i18n.ts", import.meta.url), "utf8"),
+    readFile(new URL("../features/game/components/ConfirmDialog.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../vite.config.ts", import.meta.url), "utf8"),
@@ -54,6 +56,7 @@ test("keeps the game configuration and project boundaries verifiable", async () 
   assert.match(levels, /difficulty:\s*5/);
   assert.match(levels, /lanes:\s*5/);
   assert.match(model, /endlessEnemySpeedMultiplier:\s*4/);
+  assert.match(model, /endlessLaneCount:\s*7/);
   assert.match(game, /requestAnimationFrame/);
   assert.match(storage, /LEVEL_PROGRESS_STORAGE_KEY = "hua-vs-luca-level-progress-v2"/);
   assert.match(storage, /level\.id === "1-2" \? previous\["1-1"\]/);
@@ -74,14 +77,18 @@ test("keeps the game configuration and project boundaries verifiable", async () 
   assert.match(cats, /previewAssets/);
   assert.match(cats, /unusedBonusScore:\s*300/);
   assert.match(cats, /不知道为什么，花花从出生起就掌握了变成球的能力。/);
+  assert.match(cats, /en: "Ball Flora"/);
   assert.equal((cats.match(/hua-bowl-[12]\.png/g) ?? []).length, 6);
   assert.match(enemies, /export const ENEMY_TYPES/);
   assert.match(enemies, /这个路卡就是逊啦。/);
+  assert.match(enemies, /en: "Luca"/);
   assert.match(enemies, /killScore:\s*100/);
   assert.equal((enemies.match(/#D4C892/g) ?? []).length, 2);
   assert.match(levels, /catTypeIds/);
   assert.match(levels, /enemyTypeIds/);
   assert.match(levels, /id: "1-1"[\s\S]*?totalEnemies: 6[\s\S]*?lanes: 1/);
+  assert.match(levels, /id: "1-1", name: \{ zh: "出租屋", en: "Rental Room" \}/);
+  assert.match(levels, /zh: "拖动猫咪到跑道发射！", en: "Drag a cat onto the lane to launch!"/);
   assert.match(levels, /id: "1-1"[\s\S]*?"ball-hua": 10[\s\S]*?twoStars: 500, threeStars: 1100/);
   assert.match(levels, /id: "1-2"[\s\S]*?"ball-hua": 20[\s\S]*?twoStars: 2000, threeStars: 2500/);
   assert.match(model, /getChainMultiplier/);
@@ -89,23 +96,53 @@ test("keeps the game configuration and project boundaries verifiable", async () 
   assert.match(model, /getLevelRating/);
   assert.match(game, /className="victory-rating"/);
   assert.match(game, /className="level-rating-stickers"/);
+  assert.match(game, /rating === 3 \? " is-three-star"/);
   assert.match(game, /className=\{`cat-inventory/);
-  assert.match(game, /按住左上角猫咪卡片拖到跑道发射/);
+  assert.match(game, /activeLevel\.tips\.map/);
+  assert.match(game, /className="site-utility-area"/);
+  assert.match(game, /className="site-utility-button language-switch-button"/);
+  assert.match(game, /copy\.restartQuestion/);
+  assert.match(game, /requestConfirmation\("level-select"\)/);
+  assert.match(game, /confirmationActionRef\.current !== null/);
+  assert.match(game, /disabled=\{confirmationAction !== null \|\|/);
+  assert.match(game, /<ConfirmDialog/);
+  assert.match(confirmDialog, /export function ConfirmDialog/);
+  assert.match(globals, /\.pause-message-overlay\s*\{[\s\S]*?background:\s*rgba\([^;]+\);[\s\S]*?backdrop-filter:\s*none;/);
+  assert.match(game, /onClick=\{togglePause\}[\s\S]*?copy\.tapToResume/);
+  assert.match(i18n, /tapToResume: "点击屏幕继续"/);
+  assert.match(model, /type EnemyDeathEffect/);
+  assert.match(game, /className="enemy-death-effect"/);
+  assert.match(globals, /@keyframes enemyPartScatter/);
+  assert.match(game, /className="cat-drag-ghost"/);
+  assert.match(game, /getLaneFromClientPoint/);
+  assert.match(game, /createPortal/);
   assert.match(game, /completion-label/);
   assert.match(game, /Promise\.all\(GAME_ASSET_URLS\.map\(loadAsset\)\)/);
   assert.match(game, /navigateTo\("game", "fade"\)/);
-  assert.match(game, /className="incomplete-label">未完成/);
+  assert.match(game, /--mobile-shell-scale/);
+  assert.match(game, /isLandscapePhone/);
+  assert.match(globals, /width:\s*1200px;[\s\S]*?height:\s*760px;/);
+  assert.match(game, /className="incomplete-label">\{copy\.notStarted\}/);
+  assert.match(configTypes, /type LocalizedText/);
+  assert.match(i18n, /LOCALE_STORAGE_KEY/);
+  assert.match(i18n, /documentTitle: "Flora vs Luca \| Anutrium Games"/);
+  assert.match(i18n, /switchEnglish: "切换为中文"/);
   assert.match(game, /className="main-menu-wordmark"/);
   assert.match(globals, /body\s*\{\s*background:\s*#e7dfcb/);
   assert.match(globals, /html\[data-page-transition="fade"\]/);
-  assert.match(globals, /@keyframes treatSway/);
+  assert.match(globals, /\.treats-on-house img\s*\{[\s\S]*?animation:\s*none;/);
+  assert.doesNotMatch(game, /copy\.dangerLine/);
   assert.match(globals, /\.changelog-sheet\s*\{\s*border:\s*0;\s*background:\s*transparent/);
   assert.doesNotMatch(game, /addEventListener\("keydown"/);
   assert.match(page, /<HuaVsLucaGame \/>/);
   assert.match(layout, /lang="zh-CN"/);
+  assert.match(layout, /title: "花花vs路卡 \| Anutrium Games"/);
   assert.match(layout, /https:\/\/flora-ball\.anuluca\.com/);
-  assert.match(layout, /\/assets\/hua-bowl-1\.png/);
+  assert.match(layout, /\/assets\/hua-bowl-icon\.png/);
   assert.match(vite, /port:\s*3002/);
+  assert.doesNotMatch(vite, /hosting\.json|sites-vite-plugin|sites\(\)/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
   await assert.rejects(access(new URL("app/_sites-preview", projectRoot)));
+  await assert.rejects(access(new URL(".openai/hosting.json", projectRoot)));
+  await assert.rejects(access(new URL("build/sites-vite-plugin.ts", projectRoot)));
 });

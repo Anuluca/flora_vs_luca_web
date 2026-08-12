@@ -1,10 +1,16 @@
 export type Difficulty = 1 | 2 | 3 | 4 | 5;
+export type Locale = "zh" | "en";
+export type LocalizedText = Readonly<Record<Locale, string>>;
+
+export function localize(text: LocalizedText, locale: Locale) {
+  return text[locale];
+}
 
 export type CatTypeConfig = {
   id: string;
-  name: string;
-  description: string;
-  position: string;
+  name: LocalizedText;
+  description: LocalizedText;
+  position: LocalizedText;
   imageAssets: readonly string[];
   projectileAssets: readonly string[];
   previewAssets: readonly string[];
@@ -14,8 +20,8 @@ export type CatTypeConfig = {
 
 export type EnemyTypeConfig = {
   id: string;
-  name: string;
-  description: string;
+  name: LocalizedText;
+  description: LocalizedText;
   strength: Difficulty;
   imageAssets: readonly string[];
   headAsset: string;
@@ -33,13 +39,15 @@ export type RatingThresholds = {
 
 export type LevelConfig<CatId extends string = string, EnemyId extends string = string> = {
   id: string;
-  name: string;
+  name: LocalizedText;
   difficulty: Difficulty;
   totalEnemies: number;
   enemySpeed: number;
   lanes: number;
   catInventory: Readonly<Partial<Record<CatId, number>>>;
   ratingThresholds: RatingThresholds;
+  /** 战斗页底部提示，多个提示由界面使用圆点分隔。 */
+  tips: readonly LocalizedText[];
   catTypeIds: readonly CatId[];
   enemyTypeIds: readonly EnemyId[];
 };

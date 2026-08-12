@@ -2,20 +2,22 @@
 
 import Image from "next/image";
 import { FaArrowLeft } from "react-icons/fa";
-import { CAT_TYPES, ENEMY_TYPES, type Level } from "../config";
+import { CAT_TYPES, ENEMY_TYPES, localize, type Level, type Locale } from "../config";
+import { UI_COPY } from "../i18n";
 
-export function GameWordmark({ compact = false }: { compact?: boolean }) {
+export function GameWordmark({ compact = false, locale }: { compact?: boolean; locale: Locale }) {
+  const copy = UI_COPY[locale];
   return (
-    <div className={`game-wordmark${compact ? " is-compact" : ""}`} aria-label="花花 VS 路卡">
-      <span>花花</span><em>VS</em><span>路卡</span>
+    <div className={`game-wordmark${compact ? " is-compact" : ""}`} aria-label={`${copy.flora} VS ${copy.luca}`}>
+      <span>{copy.flora}</span><em>VS</em><span>{copy.luca}</span>
     </div>
   );
 }
 
-export function BackButton({ children = "返回", onClick }: { children?: string; onClick: () => void }) {
+export function BackButton({ children, locale, onClick }: { children?: string; locale: Locale; onClick: () => void }) {
   return (
     <button className="back-button" type="button" onClick={onClick}>
-      <FaArrowLeft aria-hidden="true" size={19} /> {children}
+      <FaArrowLeft aria-hidden="true" size={19} /> {children ?? UI_COPY[locale].back}
     </button>
   );
 }
@@ -43,12 +45,12 @@ export function VersusArtwork({ compact = false }: { compact?: boolean }) {
   );
 }
 
-export function MatchupPreview({ level }: { level: Level }) {
+export function MatchupPreview({ level, locale }: { level: Level; locale: Locale }) {
   const catType = CAT_TYPES[level.catTypeIds[0]];
   const enemyType = ENEMY_TYPES[level.enemyTypeIds[0]];
 
   return (
-    <div className="matchup-preview" aria-label={`${catType.name} 对战 ${enemyType.name}`}>
+    <div className="matchup-preview" aria-label={`${localize(catType.name, locale)} VS ${localize(enemyType.name, locale)}`}>
       <div className="matchup-cat-group" aria-hidden="true">
         {catType.previewAssets.map((src, index) => (
           <Image

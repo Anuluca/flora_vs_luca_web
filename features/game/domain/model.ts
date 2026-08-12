@@ -6,6 +6,7 @@ export const GAME = {
   cooldown: 0.62,
   homeLine: 18.5,
   endlessEnemySpeedMultiplier: 4,
+  endlessLaneCount: 7,
 } as const;
 
 export type Phase = "menu" | "playing" | "paused" | "victory" | "defeat";
@@ -40,6 +41,15 @@ export type HitEffect = {
   expiresAt: number;
 };
 
+/** 敌人被击中后保留片刻的位置与外观，用于播放身体零件散落动画。 */
+export type EnemyDeathEffect = {
+  id: number;
+  typeId: EnemyTypeId;
+  lane: number;
+  x: number;
+  expiresAt: number;
+};
+
 export type GameModel = {
   levelId: LevelId;
   mode: GameMode;
@@ -56,6 +66,7 @@ export type GameModel = {
   enemies: Enemy[];
   balls: Ball[];
   effects: HitEffect[];
+  deathEffects: EnemyDeathEffect[];
   nextEnemyId: number;
   nextEndlessSpawnAt: number;
   laneCount: number;
@@ -138,9 +149,10 @@ export function createGameModel(
     enemies,
     balls: [],
     effects: [],
+    deathEffects: [],
     nextEnemyId: enemies.length + 1,
     nextEndlessSpawnAt: 0.75,
-    laneCount: level.lanes,
+    laneCount: mode === "endless" ? GAME.endlessLaneCount : level.lanes,
     remainingCats,
   };
 }

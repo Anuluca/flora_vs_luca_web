@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://flora-ball.anuluca.com"),
-  title: "花花 vs 路卡｜",
+  title: "花花vs路卡 | Anutrium Games",
   description: "花花 vs 路卡是一款像素纸片风网页游戏。选择跑道、发射球形花花、连续撞飞路卡并守住猫窝。",
   applicationName: "花花 vs 路卡",
   authors: [{ name: "Anuluca", url: "https://anuluca.com" }],
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 },
   },
   openGraph: {
-    title: "花花 vs 路卡｜",
+    title: "花花vs路卡 | Anutrium Games",
     description: "发射球形花花，连续撞飞路卡，守住猫窝。",
     type: "website",
     url: "/",
@@ -28,14 +28,14 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "花花 vs 路卡｜",
+    title: "花花vs路卡 | Anutrium Games",
     description: "发射球形花花，连续撞飞路卡，守住猫窝。",
     images: ["/og.png"],
   },
   icons: {
-    icon: "/assets/hua-bowl-1.png",
-    shortcut: "/assets/hua-bowl-1.png",
-    apple: "/assets/hua-bowl-1.png",
+    icon: [{ url: "/assets/hua-bowl-icon.png", type: "image/png", sizes: "900x900" }],
+    shortcut: "/assets/hua-bowl-icon.png",
+    apple: [{ url: "/assets/hua-bowl-icon.png", type: "image/png", sizes: "900x900" }],
   },
 };
 
