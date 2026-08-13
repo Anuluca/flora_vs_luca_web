@@ -17,7 +17,7 @@ export function HomeSeoContent() {
     <section className="seo-home-content" aria-labelledby="seo-home-title">
       <div className="seo-home-heading">
         <p>FREE BROWSER GAME · {SITE_VERSION}</p>
-        <h1 id="seo-home-title">花花 vs 路卡：免费在线猫咪防守网页游戏</h1>
+        <h1 id="seo-home-title">花花 vs 路卡：Anutrium 网页游戏</h1>
         <p>
           《花花 vs 路卡》是一款纸片拼贴风的免费网页游戏。拖动花花进入跑道，让猫咪蜷成球撞飞不断来袭的路卡，守住猫窝和猫条。无需下载或注册，可直接在电脑与手机浏览器游玩。
         </p>

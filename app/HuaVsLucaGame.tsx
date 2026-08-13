@@ -104,6 +104,25 @@ type PageTransitionMode = "page" | "fade";
 type ConfirmationAction = "restart" | "level-select";
 const FIXED_VISUAL_LANE_COUNT = 5;
 const CAT_DROP_DUST_DURATION = 0.46;
+const MOBILE_PORTRAIT_QUERY = "(max-width: 767px) and (orientation: portrait)";
+const MOBILE_LANDSCAPE_QUERY = "(max-width: 1000px) and (max-height: 620px) and (orientation: landscape)";
+
+/**
+ * Vibration API 不提供真实强度，只提供持续时间。这里按 10 级手感映射为每级 10ms；
+ * 仅触屏手机且浏览器支持时触发，iOS Safari 等不支持环境自动跳过。
+ */
+function triggerMobileHaptic(level: 2 | 3) {
+  if (typeof window === "undefined" || typeof navigator.vibrate !== "function") return;
+  const isPhoneViewport = window.matchMedia(MOBILE_PORTRAIT_QUERY).matches
+    || window.matchMedia(MOBILE_LANDSCAPE_QUERY).matches;
+  if (!isPhoneViewport || navigator.maxTouchPoints <= 0) return;
+
+  try {
+    navigator.vibrate(level * 10);
+  } catch {
+    // 系统设置或浏览器策略拒绝震动时保持静默，不影响游戏逻辑。
+  }
+}
 
 /**
  * 跑道视觉高度固定为场地的五分之一；关卡跑道不足五条时整体垂直居中。
@@ -121,8 +140,8 @@ type CatalogDetail =
 
 const CATALOG_CAT_TYPES = Object.values(CAT_TYPES);
 const CATALOG_ENEMY_TYPES = Object.values(ENEMY_TYPES);
-/** 常驻 BGM 只使用总音量的一成，避免覆盖战斗音效。 */
-const GAME_BGM_VOLUME_MULTIPLIER = 0.133;
+/** 常驻 BGM 使用独立倍率，避免覆盖战斗音效。 */
+const GAME_BGM_VOLUME_MULTIPLIER = 0.236;
 const CATALOG_CAT_SLOTS: Array<(typeof CATALOG_CAT_TYPES)[number] | undefined> = [
   ...CATALOG_CAT_TYPES.filter((catType) => catType.id !== "hehe-hua"),
   ...Array.from({ length: 9 }, () => undefined),
@@ -235,6 +254,8 @@ export default function HuaVsLucaGame() {
    */
   const loadedAudioUrlsRef = useRef(new Map<string, string>());
   const gameBgmRef = useRef<HTMLAudioElement | null>(null);
+  const gameBgmSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
+  const gameBgmGainRef = useRef<GainNode | null>(null);
   const victoryAudioRef = useRef<HTMLAudioElement | null>(null);
   const defeatBgmRef = useRef<HTMLAudioElement | null>(null);
   const victoryRetryCleanupRef = useRef<(() => void) | null>(null);
@@ -242,6 +263,8 @@ export default function HuaVsLucaGame() {
   const briefingExitTimerRef = useRef<number | null>(null);
   const enemySpeedMultiplierRef = useRef<EnemySpeedMultiplier>(1);
   const laneFieldRef = useRef<HTMLDivElement | null>(null);
+  const gamePageRef = useRef<HTMLElement | null>(null);
+  const landingShakeAnimationsRef = useRef<Animation[]>([]);
   const confirmationWasPlayingRef = useRef(false);
   const confirmationActionRef = useRef<ConfirmationAction | null>(null);
   const localeReadyRef = useRef(false);
@@ -323,6 +346,46 @@ export default function HuaVsLucaGame() {
     setSelectedLane(nextLane);
   }, []);
 
+  /**
+   * 猫咪落地时让场景固定物件产生毫秒级错位震动。独立 translate 不会覆盖
+   * 猫窝、猫条和按钮原有的 transform 定位；连续落地会取消旧动画并重新触发。
+   */
+  const triggerCatLandingVisualShake = useCallback(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const gamePage = gamePageRef.current;
+    if (!gamePage) return;
+
+    landingShakeAnimationsRef.current.forEach((animation) => animation.cancel());
+    const selectors = [
+      ".scratcher-house",
+      ".treats-on-house",
+      ".game-hud .level-copy",
+      ".game-hud .progress-track-wrap",
+      ".game-hud .score-block",
+      ".game-hud .hud-actions",
+      ".enemy-speed-button",
+    ];
+    landingShakeAnimationsRef.current = selectors.flatMap((selector, groupIndex) => (
+      Array.from(gamePage.querySelectorAll<HTMLElement>(selector)).map((element, elementIndex) => {
+        const direction = (groupIndex + elementIndex) % 2 === 0 ? 1 : -1;
+        return element.animate(
+          [
+            { translate: "0 0" },
+            { translate: `${direction * 5}px -2px`, offset: 0.24 },
+            { translate: `${direction * -4}px 2px`, offset: 0.5 },
+            { translate: `${direction * 2}px -1px`, offset: 0.74 },
+            { translate: "0 0" },
+          ],
+          {
+            duration: 150,
+            delay: groupIndex * 9 + elementIndex * 4,
+            easing: "linear",
+          },
+        );
+      })
+    ));
+  }, []);
+
   /** 创建已经过加载页校验的媒体元素；回退远程地址时也强制使用统一的 CORS 模式。 */
   const createLoadedAudio = useCallback((src: string) => {
     const audio = new Audio();
@@ -331,6 +394,33 @@ export default function HuaVsLucaGame() {
     audio.preload = "auto";
     audio.src = loadedUrl ?? src;
     return audio;
+  }, []);
+
+  /**
+   * iOS Safari 基本不支持用 HTMLMediaElement.volume 连续调节媒体音量。
+   * 将常驻 BGM 接入 Web Audio 增益节点，音量滑块和静音逻辑即可在手机端保持一致。
+   */
+  const connectGameBgmAudioGraph = useCallback((audio: HTMLAudioElement) => {
+    if (gameBgmGainRef.current) return gameBgmGainRef.current;
+    const AudioContextClass =
+      window.AudioContext
+      || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextClass) return null;
+
+    try {
+      const context = audioContextRef.current ?? new AudioContextClass();
+      audioContextRef.current = context;
+      const source = context.createMediaElementSource(audio);
+      const gain = context.createGain();
+      gain.gain.value = soundVolumeRef.current * GAME_BGM_VOLUME_MULTIPLIER;
+      source.connect(gain).connect(context.destination);
+      gameBgmSourceRef.current = source;
+      gameBgmGainRef.current = gain;
+      audio.volume = 1;
+      return gain;
+    } catch {
+      return null;
+    }
   }, []);
 
   /** 播放加载页已解码的短音效，并返回是否成功提交到音频设备。 */
@@ -587,26 +677,39 @@ export default function HuaVsLucaGame() {
     const gameBgm = gameBgmRef.current;
     if (gameBgm) {
       if (!next) gameBgm.pause();
-      else if (!document.hidden) playLoopingAudio(gameBgm, soundVolumeRef.current * GAME_BGM_VOLUME_MULTIPLIER);
+      else if (!document.hidden) {
+        const gain = connectGameBgmAudioGraph(gameBgm);
+        if (gain) gain.gain.value = soundVolumeRef.current * GAME_BGM_VOLUME_MULTIPLIER;
+        playLoopingAudio(gameBgm, gain ? 1 : soundVolumeRef.current * GAME_BGM_VOLUME_MULTIPLIER);
+      }
     }
     if (defeatBgm && !next) defeatBgm.pause();
-  }, []);
+  }, [connectGameBgmAudioGraph]);
 
   const changeSoundVolume = useCallback((nextVolume: number) => {
     const normalizedVolume = clamp(nextVolume, 0, 1);
     const wasMuted = !soundEnabledRef.current;
     soundVolumeRef.current = normalizedVolume;
     setSoundVolume(normalizedVolume);
-    setAudioVolume(gameBgmRef.current, normalizedVolume * GAME_BGM_VOLUME_MULTIPLIER);
+    if (gameBgmGainRef.current) {
+      gameBgmGainRef.current.gain.value = normalizedVolume * GAME_BGM_VOLUME_MULTIPLIER;
+      if (audioContextRef.current?.state === "suspended") {
+        void audioContextRef.current.resume().catch(() => undefined);
+      }
+    } else {
+      setAudioVolume(gameBgmRef.current, normalizedVolume * GAME_BGM_VOLUME_MULTIPLIER);
+    }
     setAudioVolume(defeatBgmRef.current, normalizedVolume * 0.4);
     if (normalizedVolume > 0 && !soundEnabledRef.current) {
       soundEnabledRef.current = true;
       setSoundEnabled(true);
     }
     if (normalizedVolume > 0 && wasMuted && gameBgmRef.current && !document.hidden) {
-      playLoopingAudio(gameBgmRef.current, normalizedVolume * GAME_BGM_VOLUME_MULTIPLIER);
+      const gain = connectGameBgmAudioGraph(gameBgmRef.current);
+      if (gain) gain.gain.value = normalizedVolume * GAME_BGM_VOLUME_MULTIPLIER;
+      playLoopingAudio(gameBgmRef.current, gain ? 1 : normalizedVolume * GAME_BGM_VOLUME_MULTIPLIER);
     }
-  }, []);
+  }, [connectGameBgmAudioGraph]);
 
   const shareGame = useCallback(async () => {
     const url = "https://flora-ball.anuluca.com";
@@ -683,10 +786,12 @@ export default function HuaVsLucaGame() {
       if (model.mode !== "endless") model.remainingCats[catTypeId] = remaining - 1;
       model.nextShotAt = model.elapsed + GAME.cooldown;
       playInstantAudio(GAME_AUDIO_URLS.catDrop, 0.5);
+      triggerMobileHaptic(3);
+      triggerCatLandingVisualShake();
       sync();
       return true;
     },
-    [playInstantAudio, setLane, sync],
+    [playInstantAudio, setLane, sync, triggerCatLandingVisualShake],
   );
 
   const updatePointerLane = useCallback(
@@ -786,6 +891,19 @@ export default function HuaVsLucaGame() {
   useEffect(() => {
     let cancelled = false;
     let completed = 0;
+    let pageSuspended = document.hidden;
+    const handleLoaderVisibility = () => {
+      pageSuspended = document.hidden;
+    };
+    const handleLoaderPageHide = () => {
+      pageSuspended = true;
+    };
+    const handleLoaderPageShow = () => {
+      pageSuspended = false;
+    };
+    document.addEventListener("visibilitychange", handleLoaderVisibility);
+    window.addEventListener("pagehide", handleLoaderPageHide);
+    window.addEventListener("pageshow", handleLoaderPageShow);
     const randomizeMessageTimer = window.setTimeout(() => {
       setLoadingMessageIndex(Math.floor(Math.random() * LOADING_MESSAGES.zh.length));
     }, 0);
@@ -798,37 +916,95 @@ export default function HuaVsLucaGame() {
       setAssetProgress(completed / totalAssets);
     };
 
-    const loadAsset = (src: string) =>
+    const waitUntilPageVisible = () => new Promise<void>((resolve) => {
+      if (!pageSuspended && !document.hidden) {
+        resolve();
+        return;
+      }
+      const finishWhenVisible = () => {
+        if (pageSuspended || document.hidden) return;
+        document.removeEventListener("visibilitychange", finishWhenVisible);
+        window.removeEventListener("pageshow", finishWhenVisible);
+        resolve();
+      };
+      document.addEventListener("visibilitychange", finishWhenVisible);
+      window.addEventListener("pageshow", finishWhenVisible);
+    });
+
+    const withTaskTimeout = (task: Promise<void>, timeoutMs = 15000) => new Promise<void>((resolve, reject) => {
+      let settled = false;
+      const cleanup = () => {
+        window.clearTimeout(timer);
+        document.removeEventListener("visibilitychange", interruptWhenHidden);
+        window.removeEventListener("pagehide", interruptWhenHidden);
+      };
+      const finish = (callback: () => void) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        callback();
+      };
+      const interruptWhenHidden = () => {
+        if (document.hidden || pageSuspended) {
+          finish(() => reject(new Error("Asset loading paused while page is hidden")));
+        }
+      };
+      const timer = window.setTimeout(
+        () => finish(() => reject(new Error("Asset loading timed out"))),
+        timeoutMs,
+      );
+      document.addEventListener("visibilitychange", interruptWhenHidden);
+      window.addEventListener("pagehide", interruptWhenHidden);
+      task.then(
+        () => finish(resolve),
+        (error) => finish(() => reject(error)),
+      );
+    });
+
+    const withVisiblePageRetry = async (loader: () => Promise<void>) => {
+      await waitUntilPageVisible();
+      try {
+        await withTaskTimeout(loader());
+      } catch {
+        await waitUntilPageVisible();
+        await withTaskTimeout(loader());
+      }
+    };
+
+    const loadAssetOnce = (src: string) =>
       new Promise<void>((resolve, reject) => {
         const image = new window.Image();
         image.decoding = "async";
         image.onload = () => {
-          const finish = () => {
-            markAssetComplete();
-            resolve();
-          };
-
-          if (typeof image.decode === "function") image.decode().catch(() => undefined).then(finish);
-          else finish();
+          // onload 已代表图片数据可用；后台标签页中的 decode() 可能被浏览器无限期挂起。
+          resolve();
         };
         image.onerror = () => reject(new Error(`Failed to load ${src}`));
         image.src = src;
       });
 
+    const loadAsset = async (src: string) => {
+      await withVisiblePageRetry(() => loadAssetOnce(src));
+      markAssetComplete();
+    };
+
     const loadFonts = async () => {
       if (document.fonts) {
-        await document.fonts.load('1em "cn-custom"');
-        await document.fonts.ready;
+        await withVisiblePageRetry(async () => {
+          await document.fonts.load('1em "cn-custom"');
+        });
       }
       markAssetComplete();
     };
 
-    const loadAudio = async (src: string) => {
+    const loadAudioOnce = async (src: string) => {
       const AudioContextClass =
         window.AudioContext
         || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
       if (!AudioContextClass) throw new Error("Web Audio API is unavailable");
-      const context = audioContextRef.current ?? new AudioContextClass();
+      const context = !audioContextRef.current || audioContextRef.current.state === "closed"
+        ? new AudioContextClass()
+        : audioContextRef.current;
       audioContextRef.current = context;
       // reload 绕过旧版本用 <audio> 产生的 no-cors 浏览器缓存；后续播放走本地 Blob，不再请求 R2。
       const response = await fetch(src, { cache: "reload", mode: "cors" });
@@ -842,6 +1018,10 @@ export default function HuaVsLucaGame() {
       );
       const buffer = await context.decodeAudioData(bytes.slice(0));
       if (GAME_INSTANT_AUDIO_URLS.includes(src)) instantAudioBuffersRef.current.set(src, buffer);
+    };
+
+    const loadAudio = async (src: string) => {
+      await withVisiblePageRetry(() => loadAudioOnce(src));
       markAssetComplete();
     };
 
@@ -860,6 +1040,9 @@ export default function HuaVsLucaGame() {
     return () => {
       cancelled = true;
       window.clearTimeout(randomizeMessageTimer);
+      document.removeEventListener("visibilitychange", handleLoaderVisibility);
+      window.removeEventListener("pagehide", handleLoaderPageHide);
+      window.removeEventListener("pageshow", handleLoaderPageShow);
     };
   }, [assetLoadAttempt, navigateTo]);
 
@@ -986,6 +1169,7 @@ export default function HuaVsLucaGame() {
             expiresAt: model.elapsed + 0.72,
           });
           playEnemyDeathSound(enemy.typeId);
+          triggerMobileHaptic(2);
         };
 
         const damageEnemy = (enemy: (typeof model.enemies)[number], ball: (typeof model.balls)[number]) => {
@@ -1129,6 +1313,11 @@ export default function HuaVsLucaGame() {
 
   useEffect(() => () => victoryRetryCleanupRef.current?.(), []);
 
+  useEffect(() => () => {
+    landingShakeAnimationsRef.current.forEach((animation) => animation.cancel());
+    landingShakeAnimationsRef.current = [];
+  }, []);
+
   /**
    * 常驻 BGM 在所有界面连续播放，胜负弹窗音效只作为叠加的一次性反馈。
    * 首次自动播放若被浏览器拦截，会在用户第一次指针或键盘操作后启动。
@@ -1145,7 +1334,14 @@ export default function HuaVsLucaGame() {
 
     const startBgm = () => {
       if (document.hidden || !soundEnabledRef.current) return;
-      playLoopingAudio(audio, soundVolumeRef.current * GAME_BGM_VOLUME_MULTIPLIER);
+      const gain = connectGameBgmAudioGraph(audio);
+      if (gain) {
+        gain.gain.value = soundVolumeRef.current * GAME_BGM_VOLUME_MULTIPLIER;
+        if (audioContextRef.current?.state === "suspended") {
+          void audioContextRef.current.resume().catch(() => undefined);
+        }
+      }
+      playLoopingAudio(audio, gain ? 1 : soundVolumeRef.current * GAME_BGM_VOLUME_MULTIPLIER);
     };
     const pauseBgm = () => audio.pause();
     const syncBgmWithPageVisibility = () => {
@@ -1171,7 +1367,7 @@ export default function HuaVsLucaGame() {
       document.removeEventListener("freeze", pauseBgm);
       document.removeEventListener("resume", startBgm);
     };
-  }, [createLoadedAudio, screen]);
+  }, [connectGameBgmAudioGraph, createLoadedAudio, screen]);
 
   useEffect(() => {
     if (snapshot.phase !== "defeat") {
@@ -1643,7 +1839,7 @@ export default function HuaVsLucaGame() {
       })()}
 
       {(screen === "game" || screen === "level-briefing") && (
-      <section className={`game-cabinet game-page${screen === "level-briefing" ? " is-briefing" : ""}${briefingExiting ? " is-briefing-exiting" : ""}`} aria-label={screen === "level-briefing" ? copy.readyToDefend : copy.gameLabel}>
+      <section ref={gamePageRef} className={`game-cabinet game-page${screen === "level-briefing" ? " is-briefing" : ""}${briefingExiting ? " is-briefing-exiting" : ""}`} aria-label={screen === "level-briefing" ? copy.readyToDefend : copy.gameLabel}>
         <header className="game-hud">
           <div className="level-progress" aria-label={snapshot.mode === "endless" ? copy.endlessMode : `${copy.levelProgress} ${Math.round(progress)}%`}>
             <div className="level-copy">

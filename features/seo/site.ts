@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const SITE_URL = "https://flora-ball.anuluca.com";
 export const SITE_NAME = "花花 vs 路卡";
-export const SITE_TITLE = "花花 vs 路卡：免费在线猫咪防守网页游戏";
+export const SITE_TITLE = "花花 vs 路卡：Anutrium 网页游戏";
 export const SITE_DESCRIPTION = "免费在线游玩《花花 vs 路卡》：拖动球形花花和车轮花花进入跑道，撞飞路卡与牛马路卡，守住猫窝最后的防线。无需安装，支持电脑和手机浏览器。";
 export const SITE_AUTHOR = "Anuluca";
 export const SITE_VERSION = "0.1_demo";

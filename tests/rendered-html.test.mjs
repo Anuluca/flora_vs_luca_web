@@ -23,12 +23,12 @@ test("server-renders the complete Hua vs Luca game shell", async () => {
 
   const html = await response.text();
   assert.match(html, /<html[^>]+lang="zh-CN"/i);
-  assert.match(html, /<title>花花 vs 路卡：免费在线猫咪防守网页游戏<\/title>/i);
+  assert.match(html, /<title>花花 vs 路卡：Anutrium 网页游戏<\/title>/i);
   assert.match(html, /正在把花花运过来\.\.\./);
   assert.match(html, /花花正在睡觉/);
   assert.match(html, /https:\/\/flora-ball\.anuluca\.com/);
   assert.match(html, /application\/ld\+json/);
-  assert.match(html, /花花 vs 路卡：免费在线猫咪防守网页游戏/);
+  assert.match(html, /花花 vs 路卡：Anutrium 网页游戏/);
   assert.match(html, /href="\/guide"/);
   assert.match(html, /href="\/bestiary"/);
   assert.match(html, /href="\/levels"/);
@@ -167,7 +167,7 @@ test("keeps the game configuration and project boundaries verifiable", async () 
   assert.match(cats, /strength:\s*"R"/);
   assert.match(cats, /traitDescription/);
   assert.match(enemies, /traitDescription/);
-  assert.equal((enemies.match(/death: \{ src: "https:\/\/assets\.anuluca\.com\/otherWebsites\/flora-vs-luca\/audio\/enemy-death-rizz\.mp3", volumeMultiplier: 0\.667 \}/g) ?? []).length, 2);
+  assert.equal((enemies.match(/death: \{ src: "https:\/\/assets\.anuluca\.com\/otherWebsites\/flora-vs-luca\/audio\/enemy-death-rizz\.mp3", volumeMultiplier: 0\.889 \}/g) ?? []).length, 2);
   assert.match(configTypes, /soundEffects\?:[\s\S]*?death\?:[\s\S]*?volumeMultiplier:\s*number/);
   assert.match(game, /playEnemyDeathSound\(enemy\.typeId\)/);
   assert.match(enemies, /https:\/\/assets\.anuluca\.com\/otherWebsites\/flora-vs-luca\/enemies\/luca\/head\.webp/);
@@ -253,7 +253,7 @@ test("keeps the game configuration and project boundaries verifiable", async () 
   assert.match(game, /window\.addEventListener\("touchend", retryOnInteraction, \{ once: true, capture: true \}\)/);
   assert.match(gameAssets, /victory: `\$\{GAME_ASSET_BASE_URL\}\/audio\/victory\.mp3`/);
   assert.match(game, /createLoadedAudio\(GAME_AUDIO_URLS\.gameBgm\)/);
-  assert.match(game, /const GAME_BGM_VOLUME_MULTIPLIER = 0\.133/);
+  assert.match(game, /const GAME_BGM_VOLUME_MULTIPLIER = 0\.236/);
   assert.doesNotMatch(game, /soundVolumeRef\.current \* 0\.2/);
   assert.match(game, /window\.addEventListener\("pointerdown", startBgm, \{ once: true \}\)/);
   assert.match(game, /document\.addEventListener\("visibilitychange", syncBgmWithPageVisibility\)/);
@@ -283,6 +283,14 @@ test("keeps the game configuration and project boundaries verifiable", async () 
   assert.match(game, /onClick=\{startFromMainMenu\}/);
   assert.match(game, /playStartActionSound\(\);[\s\S]*?setBriefingExiting\(true\)/);
   assert.match(game, /placedAt: model\.elapsed/);
+  assert.match(game, /function triggerMobileHaptic\(level: 2 \| 3\)/);
+  assert.match(game, /navigator\.vibrate\(level \* 10\)/);
+  assert.match(game, /playInstantAudio\(GAME_AUDIO_URLS\.catDrop, 0\.5\);[\s\S]*?triggerMobileHaptic\(3\)/);
+  assert.match(game, /const triggerCatLandingVisualShake = useCallback/);
+  assert.match(game, /"\.scratcher-house"[\s\S]*?"\.treats-on-house"[\s\S]*?"\.game-hud \.level-copy"[\s\S]*?"\.game-hud \.progress-track-wrap"[\s\S]*?"\.game-hud \.score-block"[\s\S]*?"\.game-hud \.hud-actions"[\s\S]*?"\.enemy-speed-button"/);
+  assert.match(game, /duration:\s*150,[\s\S]*?delay:\s*groupIndex \* 9 \+ elementIndex \* 4/);
+  assert.match(game, /triggerMobileHaptic\(3\);[\s\S]*?triggerCatLandingVisualShake\(\)/);
+  assert.match(game, /playEnemyDeathSound\(enemy\.typeId\);[\s\S]*?triggerMobileHaptic\(2\)/);
   assert.match(game, /snapshot\.elapsed - ball\.placedAt < CAT_DROP_DUST_DURATION/);
   assert.doesNotMatch(game, /model\.elapsed - ball\.placedAt < CAT_DROP_DURATION\) continue/);
   assert.match(game, /className="hua-drop-dust"/);
@@ -423,6 +431,15 @@ test("keeps the game configuration and project boundaries verifiable", async () 
   assert.match(game, /const audioAssetUrls = GAME_ASSET_URLS\.filter/);
   assert.match(game, /Promise\.all\(\[[\s\S]*?GAME_IMAGE_URLS\.map\(loadAsset\)[\s\S]*?audioAssetUrls\.map\(loadAudio\)[\s\S]*?loadFonts\(\)/);
   assert.match(game, /document\.fonts\.load\('1em "cn-custom"'\)/);
+  assert.doesNotMatch(game, /document\.fonts\.ready/);
+  assert.match(game, /const withTaskTimeout = \(task: Promise<void>, timeoutMs = 15000\)/);
+  assert.match(game, /Asset loading paused while page is hidden/);
+  assert.match(game, /window\.addEventListener\("pagehide", handleLoaderPageHide\)/);
+  assert.match(game, /window\.addEventListener\("pageshow", handleLoaderPageShow\)/);
+  assert.match(game, /await waitUntilPageVisible\(\)/);
+  assert.match(game, /await withTaskTimeout\(loader\(\)\)/);
+  assert.match(game, /context\.createMediaElementSource\(audio\)/);
+  assert.match(game, /gameBgmGainRef\.current\.gain\.value = normalizedVolume \* GAME_BGM_VOLUME_MULTIPLIER/);
   assert.match(game, /navigateTo\("game", "fade"\)/);
   assert.match(game, /const startGameFromBriefing = useCallback/);
   assert.match(game, /startGame\(selectedLevelId, briefingMode, false\)/);
@@ -451,8 +468,9 @@ test("keeps the game configuration and project boundaries verifiable", async () 
   assert.match(globals, /手机固定横向画布缩放后[\s\S]*?\.game-page:not\(\.is-briefing\) \.hud-score-actions\s*\{[\s\S]*?z-index:\s*160/);
   assert.match(globals, /@keyframes chapterStampDrop\s*\{[\s\S]*?opacity:\s*0;[\s\S]*?rotate\(-8deg\) scale\(1\.8\)[\s\S]*?opacity:\s*1;[\s\S]*?rotate\(-8deg\) scale\(1\)/);
   assert.doesNotMatch(globals, /translate3d\(18px, -22px, 0\) rotate\(-3deg\) scale\(1\.8\)/);
-  assert.match(globals, /\.level-select-page \.level-grid\s*\{[\s\S]*?width:\s*90%;[\s\S]*?gap:\s*12px/);
+  assert.match(globals, /\.level-select-page \.level-grid\s*\{[\s\S]*?width:\s*82%;[\s\S]*?gap:\s*10px/);
   assert.match(globals, /\.level-select-page \.chapter-completion-overlay\s*\{[\s\S]*?top:\s*-18px/);
+  assert.match(globals, /手机端将底部三个工具控件移到游戏主体上方[\s\S]*?\.page-shell > \.site-utility-area\s*\{[\s\S]*?order:\s*1[\s\S]*?\.page-shell > \.game-cabinet\s*\{[\s\S]*?order:\s*2/);
   assert.match(gameBrand, /export function MainMenuHero/);
   assert.match(gameBrand, /size: "large" \| "small"/);
   assert.match(gameBrand, /className="main-menu-hero is-small"[\s\S]*?className="small-brand-stage"[\s\S]*?<VersusArtwork \/>[\s\S]*?<GameWordmark locale=\{locale\} \/>/);
