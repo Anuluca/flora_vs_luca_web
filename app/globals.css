@@ -166,8 +166,9 @@ button:focus-visible {
 
 .loading-paper h1 {
   margin-top: 5px;
-  font-size: clamp(32px, 5vw, 52px);
-  letter-spacing: -0.09em;
+  font-size: clamp(24px, 3.2vw, 38px);
+  line-height: 1.15;
+  letter-spacing: -0.05em;
   text-shadow: 3px 3px 0 #d2bea0;
 }
 
@@ -1770,6 +1771,8 @@ button:focus-visible {
 
 .game-controls {
   position: relative;
+  /* 加速按钮会向上跨入战场，底栏需高于 z-index: 30 的暂停遮罩，避免按钮上半部被压暗。 */
+  z-index: 31;
   min-height: 68px;
   padding: 9px 18px;
   display: flex;
@@ -6099,11 +6102,40 @@ body.is-dragging-cat * {
   .page-shell {
     transform: translate(-50%, -50%) rotate(90deg) scale(var(--mobile-shell-scale, .5));
   }
+
+  .balloon-backdrop {
+    inset: auto;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(90deg);
+    transform-origin: center;
+  }
 }
 
 @media (max-width: 1000px) and (max-height: 620px) and (orientation: landscape) {
   .page-shell {
     transform: translate(-50%, -50%) scale(var(--mobile-shell-scale, .5));
+  }
+}
+
+/* 手机使用固定横向画布：关卡卡片保持三列两行，避免窄屏媒体查询改成两列三行后撑出容器。 */
+@media (max-width: 767px) and (orientation: portrait),
+       (max-width: 1000px) and (max-height: 620px) and (orientation: landscape) {
+  .level-select-page {
+    overflow: hidden;
+  }
+
+  .level-select-page .level-board {
+    overflow: hidden;
+  }
+
+  .level-select-page .chapter-viewport {
+    overflow: clip;
+  }
+
+  .level-select-page .level-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
   }
 }
 
@@ -7736,7 +7768,7 @@ body.is-dragging-cat * {
   transform: rotate(-8deg);
   pointer-events: none;
   user-select: none;
-  animation: chapterStampDrop 480ms cubic-bezier(.18, .82, .24, 1.12) both;
+  animation: chapterStampDrop 420ms cubic-bezier(.2, .72, .25, 1) both;
 }
 
 .chapter-completion-stamp.is-perfect {
@@ -7867,18 +7899,11 @@ body.is-dragging-cat * {
 @keyframes chapterStampDrop {
   0% {
     opacity: 0;
-    transform: translate3d(18px, -22px, 0) rotate(-3deg) scale(1.8);
-  }
-  52% {
-    opacity: 1;
-    transform: translate3d(0, 2px, 0) rotate(-10deg) scale(.86);
-  }
-  74% {
-    transform: translate3d(0, -1px, 0) rotate(-7deg) scale(1.08);
+    transform: rotate(-8deg) scale(1.8);
   }
   100% {
     opacity: 1;
-    transform: translate3d(0, 0, 0) rotate(-8deg) scale(1);
+    transform: rotate(-8deg) scale(1);
   }
 }
 
@@ -8010,5 +8035,69 @@ body.is-dragging-cat * {
   .game-hud .progress-percentage {
     margin-top: 5px;
     font-size: 12px;
+  }
+}
+
+/* 手机固定横向画布缩放后，单独放大游戏右上角的分数与操作区。 */
+@media (max-width: 767px) and (orientation: portrait),
+       (max-width: 1000px) and (max-height: 620px) and (orientation: landscape) {
+  .level-select-page .level-grid {
+    width: 90%;
+    gap: 12px;
+  }
+
+  .level-select-page .level-card {
+    min-height: 170px;
+    padding: 14px 13px 46px;
+  }
+
+  .level-select-page .level-card.is-locked {
+    padding: 14px 13px 46px;
+  }
+
+  .level-select-page .chapter-completion-overlay {
+    top: -18px;
+  }
+
+  .game-page:not(.is-briefing) .game-hud {
+    grid-template-columns: minmax(190px, 1fr) minmax(280px, 440px) minmax(270px, 1fr);
+    /* 折角属于主容器的 z-index: 150 伪元素；使用 auto 避免 HUD 形成 80 层的封闭层叠上下文。 */
+    z-index: auto;
+  }
+
+  .game-page:not(.is-briefing) .hud-score-actions {
+    position: relative;
+    z-index: 160;
+    gap: 16px;
+  }
+
+  .game-page:not(.is-briefing) .hud-score-actions .score-block {
+    display: flex;
+    min-width: 84px;
+  }
+
+  .game-page:not(.is-briefing) .hud-score-actions .score-block span,
+  .game-page:not(.is-briefing) .hud-score-actions .score-block small {
+    display: block;
+    font-size: 12px;
+  }
+
+  .game-page:not(.is-briefing) .hud-score-actions .score-block strong {
+    font-size: 28px;
+  }
+
+  .game-page:not(.is-briefing) .hud-actions {
+    gap: 9px;
+  }
+
+  .game-page:not(.is-briefing) .hud-actions .icon-button {
+    width: 52px;
+    height: 52px;
+    border-width: 3px;
+  }
+
+  .game-page:not(.is-briefing) .hud-actions .icon-button svg {
+    width: 22px;
+    height: 22px;
   }
 }

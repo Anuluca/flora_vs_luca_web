@@ -35,6 +35,7 @@ type Particle = {
 const BALLOON_COUNT = 15;
 // 以 60 FPS 作为运动速度基准；实际绘制跟随 requestAnimationFrame，避免阈值误差导致隔帧。
 const FRAME_DURATION = 1000 / 60;
+const PORTRAIT_MOBILE_QUERY = "(max-width: 767px) and (orientation: portrait)";
 const BALLOON_COLORS: BalloonColor[] = [
   { base: "#a8423f", light: "#d78676", dark: "#682b2b" },
   { base: "#d19a3d", light: "#eed28a", dark: "#846028" },
@@ -262,8 +263,11 @@ export function BalloonBackdrop() {
       resizeFrameId = 0;
       const previousWidth = width;
       const previousHeight = height;
-      width = window.innerWidth;
-      height = window.innerHeight;
+      const shouldRotateWithGame = window.matchMedia(PORTRAIT_MOBILE_QUERY).matches;
+      // 竖屏手机中的游戏画布会顺时针旋转为横向，因此先交换气球画布尺寸，
+      // 再交由 CSS 同步旋转，确保气球方向正确且旋转后仍覆盖完整视口。
+      width = shouldRotateWithGame ? window.innerHeight : window.innerWidth;
+      height = shouldRotateWithGame ? window.innerWidth : window.innerHeight;
       pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = Math.round(width * pixelRatio);
       canvas.height = Math.round(height * pixelRatio);

@@ -21,6 +21,8 @@ export default defineConfig(async () => {
 
   return {
     server: {
+      // 监听全部本地网卡，启动日志会显示可供手机等局域网设备访问的 Network 地址。
+      host: "0.0.0.0",
       port: 3002,
       strictPort: true,
       ...(isCodexSeatbeltSandbox

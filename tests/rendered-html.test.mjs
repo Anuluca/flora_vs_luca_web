@@ -108,6 +108,11 @@ test("keeps the game configuration and project boundaries verifiable", async () 
   assert.match(storage, /level\.id === "1-2" \? previous\["1-1"\]/);
   assert.match(storage, /loadLevelProgress/);
   assert.match(storage, /saveLevelProgress/);
+  assert.match(globals, /\.loading-paper h1\s*\{[\s\S]*?font-size:\s*clamp\(24px, 3\.2vw, 38px\)/);
+  assert.match(
+    globals,
+    /手机使用固定横向画布[\s\S]*?\.level-select-page \.level-grid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/,
+  );
   assert.match(game, /completed:\s*true/);
   assert.match(game, /src=\{ball\.asset\}/);
   assert.match(game, /type Screen =/);
@@ -162,7 +167,7 @@ test("keeps the game configuration and project boundaries verifiable", async () 
   assert.match(cats, /strength:\s*"R"/);
   assert.match(cats, /traitDescription/);
   assert.match(enemies, /traitDescription/);
-  assert.equal((enemies.match(/death: \{ src: "https:\/\/assets\.anuluca\.com\/otherWebsites\/flora-vs-luca\/audio\/enemy-death-rizz\.mp3", volumeMultiplier: 0\.5 \}/g) ?? []).length, 2);
+  assert.equal((enemies.match(/death: \{ src: "https:\/\/assets\.anuluca\.com\/otherWebsites\/flora-vs-luca\/audio\/enemy-death-rizz\.mp3", volumeMultiplier: 0\.667 \}/g) ?? []).length, 2);
   assert.match(configTypes, /soundEffects\?:[\s\S]*?death\?:[\s\S]*?volumeMultiplier:\s*number/);
   assert.match(game, /playEnemyDeathSound\(enemy\.typeId\)/);
   assert.match(enemies, /https:\/\/assets\.anuluca\.com\/otherWebsites\/flora-vs-luca\/enemies\/luca\/head\.webp/);
@@ -239,12 +244,24 @@ test("keeps the game configuration and project boundaries verifiable", async () 
   assert.doesNotMatch(model, /\.sort\(/);
   assert.match(game, /ball\.fallingAt !== undefined/);
   assert.match(game, /playSound\("star"\)/);
+  assert.match(game, /const playVictorySound = useCallback/);
+  assert.match(game, /playInstantAudio\(GAME_AUDIO_URLS\.victory, 0\.5\)/);
   assert.match(game, /createLoadedAudio\(GAME_AUDIO_URLS\.victory\)/);
   assert.match(game, /audio\.volume = soundVolumeRef\.current \* 0\.5/);
+  assert.match(game, /audioContextRef\.current\.state === "closed"/);
+  assert.match(game, /if \(context\.state !== "running"\)/);
+  assert.match(game, /window\.addEventListener\("touchend", retryOnInteraction, \{ once: true, capture: true \}\)/);
   assert.match(gameAssets, /victory: `\$\{GAME_ASSET_BASE_URL\}\/audio\/victory\.mp3`/);
   assert.match(game, /createLoadedAudio\(GAME_AUDIO_URLS\.gameBgm\)/);
-  assert.match(game, /soundVolumeRef\.current \* 0\.2/);
+  assert.match(game, /const GAME_BGM_VOLUME_MULTIPLIER = 0\.133/);
+  assert.doesNotMatch(game, /soundVolumeRef\.current \* 0\.2/);
   assert.match(game, /window\.addEventListener\("pointerdown", startBgm, \{ once: true \}\)/);
+  assert.match(game, /document\.addEventListener\("visibilitychange", syncBgmWithPageVisibility\)/);
+  assert.match(game, /window\.addEventListener\("pagehide", pauseBgm\)/);
+  assert.match(game, /window\.addEventListener\("pageshow", startBgm\)/);
+  assert.match(game, /document\.addEventListener\("freeze", pauseBgm\)/);
+  assert.match(game, /document\.addEventListener\("resume", startBgm\)/);
+  assert.match(game, /if \(document\.hidden \|\| !soundEnabledRef\.current\) return/);
   assert.match(gameAssets, /gameBgm: `\$\{GAME_ASSET_BASE_URL\}\/audio\/game-bgm\.mp3`/);
   assert.match(game, /audio\.loop = true/);
   assert.doesNotMatch(game, /resultMusicActive/);
@@ -328,6 +345,7 @@ test("keeps the game configuration and project boundaries verifiable", async () 
   assert.match(game, /<ConfirmDialog/);
   assert.match(confirmDialog, /export function ConfirmDialog/);
   assert.match(globals, /\.pause-message-overlay\s*\{[\s\S]*?background:\s*rgba\([^;]+\);[\s\S]*?backdrop-filter:\s*none;/);
+  assert.match(globals, /\.game-controls\s*\{[\s\S]*?z-index:\s*31/);
   assert.match(game, /onClick=\{togglePause\}[\s\S]*?copy\.tapToResume/);
   assert.match(game, /className="pause-exit-button"[\s\S]*?goToLevelSelect\(\)/);
   assert.match(game, /className="pause-exit-button"[\s\S]*?<FaSignOutAlt/);
@@ -427,6 +445,14 @@ test("keeps the game configuration and project boundaries verifiable", async () 
   assert.match(globals, /@keyframes aboutBrandReveal[\s\S]*?scale\(1\.22\)/);
   assert.match(globals, /\.game-hud \.level-progress\s*\{[^}]*gap:\s*11px/);
   assert.match(globals, /\.game-hud \.progress-percentage\s*\{[^}]*margin-top:\s*10px/);
+  assert.match(globals, /手机固定横向画布缩放后[\s\S]*?\.game-page:not\(\.is-briefing\) \.hud-actions \.icon-button\s*\{[\s\S]*?width:\s*52px;[\s\S]*?height:\s*52px/);
+  assert.match(globals, /手机固定横向画布缩放后[\s\S]*?\.game-page:not\(\.is-briefing\) \.hud-score-actions \.score-block strong\s*\{[\s\S]*?font-size:\s*28px/);
+  assert.match(globals, /手机固定横向画布缩放后[\s\S]*?\.game-page:not\(\.is-briefing\) \.game-hud\s*\{[\s\S]*?z-index:\s*auto/);
+  assert.match(globals, /手机固定横向画布缩放后[\s\S]*?\.game-page:not\(\.is-briefing\) \.hud-score-actions\s*\{[\s\S]*?z-index:\s*160/);
+  assert.match(globals, /@keyframes chapterStampDrop\s*\{[\s\S]*?opacity:\s*0;[\s\S]*?rotate\(-8deg\) scale\(1\.8\)[\s\S]*?opacity:\s*1;[\s\S]*?rotate\(-8deg\) scale\(1\)/);
+  assert.doesNotMatch(globals, /translate3d\(18px, -22px, 0\) rotate\(-3deg\) scale\(1\.8\)/);
+  assert.match(globals, /\.level-select-page \.level-grid\s*\{[\s\S]*?width:\s*90%;[\s\S]*?gap:\s*12px/);
+  assert.match(globals, /\.level-select-page \.chapter-completion-overlay\s*\{[\s\S]*?top:\s*-18px/);
   assert.match(gameBrand, /export function MainMenuHero/);
   assert.match(gameBrand, /size: "large" \| "small"/);
   assert.match(gameBrand, /className="main-menu-hero is-small"[\s\S]*?className="small-brand-stage"[\s\S]*?<VersusArtwork \/>[\s\S]*?<GameWordmark locale=\{locale\} \/>/);
@@ -454,12 +480,16 @@ test("keeps the game configuration and project boundaries verifiable", async () 
   assert.match(globals, /\.kinetic-backdrop\s*\{/);
   assert.match(balloonBackdrop, /const BALLOON_COUNT = 15/);
   assert.match(balloonBackdrop, /const FRAME_DURATION = 1000 \/ 60/);
+  assert.match(balloonBackdrop, /const PORTRAIT_MOBILE_QUERY = "\(max-width: 767px\) and \(orientation: portrait\)"/);
+  assert.match(balloonBackdrop, /width = shouldRotateWithGame \? window\.innerHeight : window\.innerWidth/);
+  assert.match(balloonBackdrop, /height = shouldRotateWithGame \? window\.innerWidth : window\.innerHeight/);
   assert.doesNotMatch(balloonBackdrop, /now - previousPaintAt/);
   assert.match(balloonBackdrop, /Math\.random\(\) \* 0\.5 \+ 0\.2/);
   assert.match(balloonBackdrop, /prefers-reduced-motion/);
   assert.doesNotMatch(balloonBackdrop, /createRadialGradient/);
   assert.match(balloonBackdrop, /reducedMotion\.addEventListener\("change"/);
   assert.match(globals, /\.balloon-backdrop\s*\{/);
+  assert.match(globals, /@media \(max-width: 767px\) and \(orientation: portrait\)[\s\S]*?\.balloon-backdrop\s*\{[\s\S]*?rotate\(90deg\)/);
   assert.match(globals, /body\s*\{\s*background:\s*#e7dfcb/);
   assert.match(await readFile(new URL("../app/seo.css", import.meta.url), "utf8"), /@media \(max-width: 767px\) and \(orientation: portrait\)[\s\S]*?\.seo-home-content\s*\{\s*display:\s*none/);
   assert.match(globals, /html\[data-page-transition="fade"\]/);
@@ -472,6 +502,7 @@ test("keeps the game configuration and project boundaries verifiable", async () 
   assert.match(layout, /metadataBase: new URL\(SITE_URL\)/);
   assert.match(layout, /\/hua-bowl-favicon-v3\.png/);
   assert.match(vite, /port:\s*3002/);
+  assert.match(vite, /host:\s*"0\.0\.0\.0"/);
   assert.doesNotMatch(vite, /hosting\.json|sites-vite-plugin|sites\(\)/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
   await assert.rejects(access(new URL("app/_sites-preview", projectRoot)));

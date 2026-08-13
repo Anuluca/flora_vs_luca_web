@@ -31,7 +31,7 @@ export const ENEMY_TYPES = {
       tail: "https://assets.anuluca.com/otherWebsites/flora-vs-luca/enemies/luca/tail.webp",
     },
     soundEffects: {
-      death: { src: "https://assets.anuluca.com/otherWebsites/flora-vs-luca/audio/enemy-death-rizz.mp3", volumeMultiplier: 0.5 },
+      death: { src: "https://assets.anuluca.com/otherWebsites/flora-vs-luca/audio/enemy-death-rizz.mp3", volumeMultiplier: 0.667 },
     },
     bodyColor: "#D4C892",
     armColor: "#D4C892",
@@ -65,7 +65,7 @@ export const ENEMY_TYPES = {
       brokenGlasses: "https://assets.anuluca.com/otherWebsites/flora-vs-luca/enemies/work-luca/glasses-broken.webp",
     },
     soundEffects: {
-      death: { src: "https://assets.anuluca.com/otherWebsites/flora-vs-luca/audio/enemy-death-rizz.mp3", volumeMultiplier: 0.5 },
+      death: { src: "https://assets.anuluca.com/otherWebsites/flora-vs-luca/audio/enemy-death-rizz.mp3", volumeMultiplier: 0.667 },
     },
     bodyColor: "#D4C892",
     armColor: "#D4C892",
