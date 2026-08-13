@@ -7828,10 +7828,10 @@ body.is-dragging-cat * {
 /* 猫窝顺时针调整并放大；进入游戏和准备阶段时隐藏。 */
 .corner-cat-nest {
   right: -84px;
-  bottom: -52px;
+  bottom: -64px;
   width: 202px;
   height: 223px;
-  transform: rotate(-90deg) scaleX(1);
+  transform: rotate(-84deg) scaleX(1);
 }
 
 .persistent-corner-frame.is-game-screen .corner-cat-nest {
@@ -7930,13 +7930,23 @@ body.is-dragging-cat * {
   -webkit-background-clip: text;
 }
 
-/* “花花”字样缩小为当前尺寸的 75%；大小两种 GameBrand 保持一致比例。 */
+/* “花花”字样调整为原尺寸的 87.5%；大小两种 GameBrand 保持一致比例。 */
 .main-menu-hero.is-large .main-menu-wordmark .game-wordmark span:first-child {
-  font-size: 1.71em;
+  font-size: 2em;
+  top: 4px;
 }
 
 .main-menu-hero.is-small .main-menu-wordmark .game-wordmark span:first-child {
-  font-size: 1.5em;
+  font-size: 1.75em;
+  top: 0;
+}
+
+.main-menu-hero.is-large .main-menu-wordmark .game-wordmark span:last-child {
+  top: -22px;
+}
+
+.main-menu-hero.is-small .main-menu-wordmark .game-wordmark span:last-child {
+  top: -12px;
 }
 
 .main-menu-wordmark .game-wordmark span:last-child {
