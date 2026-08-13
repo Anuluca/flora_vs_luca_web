@@ -1,6 +1,6 @@
 export { CAT_TYPES, type CatTypeId } from "./cats";
-export { ENEMY_TYPES, type EnemyTypeId } from "./enemies";
-export { GAME_ASSET_URLS } from "./assets";
-export { LEVELS, getLevel, type Level, type LevelId } from "./levels";
+export { BASE_ENEMY_SPEED, ENEMY_SPEED_MULTIPLIERS, ENEMY_TYPES, type EnemyTypeId } from "./enemies";
+export { GAME_ASSET_BASE_URL, GAME_ASSET_URLS, GAME_AUDIO_URLS, GAME_IMAGE_URLS, GAME_INSTANT_AUDIO_URLS } from "./assets";
+export { LEVELS, LEVEL_CHAPTERS, getLevel, type Level, type LevelChapter, type LevelId } from "./levels";
 export { localize } from "../domain/config-types";
-export type { CatTypeConfig, Difficulty, EnemyTypeConfig, LevelConfig, Locale, LocalizedText } from "../domain/config-types";
+export type { CatAbility, CatTypeConfig, Difficulty, EnemySpeed, EnemyTypeConfig, LevelConfig, Locale, LocalizedText, MatchupPreviewConfig, StrengthRank } from "../domain/config-types";

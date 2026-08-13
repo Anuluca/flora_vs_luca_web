@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     url: "/",
     siteName: "花花 vs 路卡",
     locale: "zh_CN",
-    images: [{ url: "/og.png", width: 1731, height: 909, alt: "花花 vs 路卡" }],
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "花花 vs 路卡网页游戏主菜单" }],
   },
   twitter: {
     card: "summary_large_image",
@@ -33,9 +33,9 @@ export const metadata: Metadata = {
     images: ["/og.png"],
   },
   icons: {
-    icon: [{ url: "/assets/hua-bowl-icon.png", type: "image/png", sizes: "900x900" }],
-    shortcut: "/assets/hua-bowl-icon.png",
-    apple: [{ url: "/assets/hua-bowl-icon.png", type: "image/png", sizes: "900x900" }],
+    icon: [{ url: "/hua-bowl-favicon-v3.png", type: "image/png", sizes: "512x512" }],
+    shortcut: "/hua-bowl-favicon-v3.png",
+    apple: [{ url: "/hua-bowl-favicon-v3.png", type: "image/png", sizes: "512x512" }],
   },
 };
 

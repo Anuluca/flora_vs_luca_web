@@ -63,7 +63,17 @@ tests/
 - `imageAssets`：图鉴和阵容卡片图片。
 - `headAsset`：游戏内角色头部图片。
 - `strength`：图鉴强度，范围为 1–5。
-- `bodyColor`、`armColor`、`emblem`：游戏内外观。
+- `bodyColor`、`armColor`：游戏内外观。
+- `speed`：该敌人类型每秒沿跑道前进的百分比距离。
+- `killScore`：击败该敌人的基础得分。
+
+线上素材按类型归档到 R2：猫咪放在 `cats/<类型 ID>/`，敌人放在
+`enemies/<类型 ID>/`，统一由 `https://assets.anuluca.com/otherWebsites/flora-vs-luca/`
+提供。文件名使用用途而非序号来源，例如 `projectile-01.webp`、`head.webp`；新增类型时
+创建独立文件夹，并在对应类型配置中登记，加载页会自动汇总该配置内的全部素材。
+
+同一猫咪类型的素材统一使用 `900 × 900` 透明画布，主体保持原始比例居中；网页运行时
+优先引用高质量 WebP，PNG/JPG 仅保留为原始素材备份。
 
 新增敌人后，在目标关卡的 `enemyTypeIds` 中引用它的配置键。
 
@@ -73,9 +83,9 @@ tests/
 
 - `difficulty`：显示难度，范围为 1–5。
 - `totalEnemies`：普通关卡敌人总量。
-- `enemySpeed`：基础移动速度。
 - `catTypeIds`：本关允许使用的猫咪类型。
 - `enemyTypeIds`：本关会出现的敌人类型。
+- `redHeatRanges`：可选的红温进度区间，使用 0～1 比例；命中区间时敌人按类型基础速度的三倍移动。
 
 猫咪和敌人 ID 由 TypeScript 自动推导；关卡引用不存在的 ID 时，构建会直接失败。
 
@@ -84,7 +94,7 @@ tests/
 完成状态与各关最高分由 `features/game/infrastructure/progress-storage.ts` 管理，存储键为：
 
 ```text
-hua-vs-luca-level-progress-v1
+hua-vs-luca-level-progress-v2
 ```
 
 当前进度只保存在浏览器 LocalStorage。若后续商业化需要跨设备同步，应在基础设施层增加服务端存储适配，不要在页面组件中直接加入数据库请求。

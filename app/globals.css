@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "cn-custom";
+  src: url("https://assets.anuluca.com/fonts/unboundedsans.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
 :root {
   --ink: #282321;
   --paper: #e9ddc7;
@@ -26,11 +34,7 @@ body {
 body {
   margin: 0;
   color: var(--ink);
-  background:
-    radial-gradient(circle at 12% 18%, rgba(255, 255, 255, 0.2) 0 2px, transparent 3px),
-    radial-gradient(circle at 78% 65%, rgba(55, 44, 37, 0.1) 0 1px, transparent 2px),
-    repeating-linear-gradient(88deg, rgba(88, 66, 46, 0.035) 0 1px, transparent 1px 5px),
-    #726153;
+  background: #e7dfcb;
   font-family: "Courier New", "Noto Sans SC", monospace;
   overflow-x: hidden;
 }
@@ -52,6 +56,7 @@ button:focus-visible {
 
 .page-shell {
   position: relative;
+  z-index: 2;
   min-height: 100vh;
   padding: clamp(12px, 2vw, 28px);
   display: grid;
@@ -63,8 +68,28 @@ button:focus-visible {
   content: "";
   position: fixed;
   inset: 0;
-  z-index: -2;
-  background: radial-gradient(ellipse at center, transparent 35%, rgba(27, 20, 17, 0.62) 130%);
+  z-index: -1;
+  background:
+    radial-gradient(ellipse at center, transparent 42%, rgba(83, 67, 54, .2) 135%),
+    repeating-linear-gradient(88deg, rgba(101, 78, 55, .025) 0 1px, transparent 1px 6px);
+  pointer-events: none;
+}
+
+.kinetic-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.balloon-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
 }
 
@@ -755,15 +780,50 @@ button:focus-visible {
   box-shadow: inset 0 2px 0 rgba(0, 0, 0, 0.26);
 }
 
-.progress-track > span {
+.progress-fill {
+  position: relative;
+  /* 已推进部分始终覆盖红温区间提示，避免红色反压完成进度。 */
+  z-index: 2;
   display: block;
   height: 100%;
   background: repeating-linear-gradient(135deg, #d9a848 0 8px, #efc25f 8px 14px);
   transition: width 180ms ease-out;
 }
 
+.progress-red-heat-range {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  bottom: 0;
+  min-width: 4px;
+  border-inline: 2px solid rgba(121, 30, 27, .82);
+  background:
+    repeating-linear-gradient(
+      135deg,
+      rgba(177, 42, 36, .66) 0 4px,
+      rgba(247, 174, 119, .32) 4px 8px
+    );
+  box-shadow: inset 0 0 0 1px rgba(255, 220, 176, .26);
+  pointer-events: none;
+}
+
+.progress-red-heat-range::after {
+  content: "!";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  color: #fff1d5;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 1000;
+  line-height: 1;
+  text-shadow: 1px 1px 0 #6f1c1b;
+  transform: translate(-50%, -50%);
+}
+
 .progress-cat {
   position: absolute;
+  z-index: 3;
   top: -18px;
   color: var(--red-dark);
   font-size: 16px;
@@ -950,23 +1010,30 @@ button:focus-visible {
   position: absolute;
   inset: 20% 2.1% 3%;
   z-index: 5;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   border: 4px solid var(--ink);
   border-radius: 7px 5px 9px 6px;
   background:
     linear-gradient(90deg, rgba(76, 62, 52, 0.11) 0 22%, transparent 22%),
     repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.06) 0 1px, transparent 1px 46px),
-    rgba(111, 133, 117, 0.34);
+    rgba(157, 143, 117, 0.38);
   box-shadow:
     inset 0 0 28px rgba(39, 30, 26, 0.22),
     0 5px 0 rgba(48, 38, 32, 0.28);
   overflow: hidden;
-  cursor: crosshair;
+  cursor: default;
   touch-action: none;
 }
 
 .lane {
   position: relative;
+  flex: 0 0 20%;
   height: 20%;
+  background:
+    linear-gradient(90deg, rgba(76, 62, 52, .08) 0 22%, transparent 22%),
+    rgba(103, 139, 112, .42);
   border-bottom: 2px dashed rgba(48, 41, 36, 0.4);
   transition: background 100ms ease-out;
 }
@@ -976,7 +1043,9 @@ button:focus-visible {
 }
 
 .lane.is-selected {
-  background: linear-gradient(90deg, rgba(246, 217, 121, 0.08), rgba(246, 217, 121, 0.27), rgba(246, 217, 121, 0.05));
+  background:
+    linear-gradient(90deg, rgba(246, 217, 121, .12), rgba(246, 217, 121, .34), rgba(246, 217, 121, .1)),
+    rgba(103, 139, 112, .42);
 }
 
 .lane > span {
@@ -1040,91 +1109,221 @@ button:focus-visible {
   z-index: 6;
   width: 72px;
   height: 94px;
-  animation: enemyBob 0.38s steps(2, end) var(--walk-delay) infinite;
+  animation: enemyBob var(--enemy-walk-duration, 0.38s) steps(2, end) var(--walk-delay) infinite;
   pointer-events: none;
 }
 
-.luca-enemy img {
+.enemy-speed-button {
+  position: absolute;
+  z-index: 2;
+  right: 17px;
+  top: 50%;
+  bottom: auto;
+  width: 62px;
+  min-width: 62px;
+  height: 38px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 2px solid rgba(68, 57, 49, .66);
+  border-radius: 4px;
+  color: #4e4138;
+  background: rgba(234, 220, 186, .92);
+  box-shadow: 3px 4px 0 rgba(49, 40, 34, .24);
+  cursor: pointer;
+  transform: translateY(-50%) rotate(-2deg);
+  transition: transform 120ms ease, background 120ms ease, box-shadow 120ms ease;
+}
+
+.enemy-speed-button.is-speed-2 {
+  color: #573615;
+  border-color: rgba(117, 67, 22, .78);
+  background: #e5a14e;
+  box-shadow: 3px 4px 0 rgba(100, 57, 22, .3);
+}
+
+.enemy-speed-button.is-speed-3 {
+  color: #fff0d3;
+  border-color: rgba(100, 24, 22, .88);
+  background: #b84239;
+  box-shadow: 3px 4px 0 rgba(91, 25, 23, .34);
+}
+
+.enemy-speed-button strong {
+  min-width: 22px;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.enemy-speed-button:hover:not(:disabled) {
+  background: #f1e3c2;
+  transform: translateY(calc(-50% - 1px)) rotate(-2deg);
+  box-shadow: 4px 5px 0 rgba(49, 40, 34, .24);
+}
+
+.enemy-speed-button.is-speed-2:hover:not(:disabled) { background: #edac58; }
+.enemy-speed-button.is-speed-3:hover:not(:disabled) { background: #c94b41; }
+
+.enemy-speed-button:active:not(:disabled) {
+  transform: translate(2px, calc(-50% + 2px)) rotate(-2deg);
+  box-shadow: 1px 1px 0 rgba(49, 40, 34, .24);
+}
+
+.enemy-speed-button:disabled {
+  opacity: .42;
+  cursor: not-allowed;
+}
+
+.enemy-head {
   position: absolute;
   z-index: 6;
-  left: 8px;
-  top: -5px;
-  width: 58px;
-  height: 48px;
+  left: 1px;
+  top: -11px;
+  width: 72px;
+  height: 60px;
   object-fit: contain;
   image-rendering: pixelated;
   filter: contrast(1.12) drop-shadow(2px 2px 0 rgba(37, 31, 28, 0.7));
+  transform-origin: 50% 82%;
+  animation: none;
+}
+
+/* 牛马路卡复用基础模型，仅叠加工作装备；破损状态由生命值驱动。 */
+.enemy-accessory {
+  position: absolute;
+  display: block;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.enemy-accessory-glasses {
+  z-index: 9;
+  left: 3px;
+  top: 6px;
+  width: 58px;
+  height: 47px;
+  filter: drop-shadow(1px 2px 0 rgba(37, 31, 28, .32));
+}
+
+.enemy-accessory-glasses.is-broken {
+  left: 4px;
+  top: 7px;
+  transform: rotate(-3deg);
+}
+
+.enemy-accessory-laptop {
+  z-index: 8;
+  left: -13px;
+  top: 37px;
+  width: 38px;
+  height: 31px;
+  transform: rotate(-4deg);
+  filter: drop-shadow(2px 3px 0 rgba(37, 31, 28, .35));
+}
+
+.enemy-accessory-laptop.is-dropping {
+  animation: workLaptopDrop .58s cubic-bezier(.18, .72, .3, 1) both;
+}
+
+@keyframes workLaptopDrop {
+  from { opacity: 1; transform: translate3d(0, 0, 0) rotate(-4deg); }
+  to { opacity: 0; transform: translate3d(-18px, 38px, 0) rotate(-38deg) scale(.82); }
+}
+
+.enemy-avatar-canvas {
+  position: relative;
+  /* 以可用高度定标，避免横向卡片把头像压小；宽度始终由原图比例推导。 */
+  width: auto;
+  height: 100%;
+  aspect-ratio: 288 / 237;
+  flex: 0 0 auto;
+}
+
+.enemy-avatar-canvas > .enemy-avatar-image {
+  position: absolute;
+  inset: 0;
+}
+
+.work-luca-avatar-glasses {
+  position: absolute;
+  z-index: 2;
+  /*
+   * 严格按战斗模型换算到头部画布：
+   * head: left 1 / top -11 / 72 × 60
+   * glasses: left 3 / top 6 / 58 × 47
+   * 禁止在具体页面覆盖这些比例，否则同一敌人的头像会发生错位。
+   */
+  left: 2.7778%;
+  top: 28.3333%;
+  width: 80.5556%;
+  height: 78.3333%;
+  object-fit: contain;
+  filter: drop-shadow(1px 2px 0 rgba(37, 31, 28, .3));
 }
 
 .enemy-body {
   position: absolute;
   z-index: 4;
-  left: 22px;
-  top: 34px;
-  width: 30px;
-  height: 41px;
-  border: 3px solid var(--ink);
-  border-radius: 8px 8px 5px 6px;
-  background: #706575;
-  box-shadow: inset 0 -8px 0 rgba(36, 29, 38, 0.24);
+  left: 24px;
+  top: 42px;
+  width: 28px;
+  height: 42px;
 }
 
-.luca-enemy[data-variant="1"] .enemy-body { background: #58736c; }
-.luca-enemy[data-variant="2"] .enemy-body { background: #8b654f; }
-
-.enemy-body::after {
-  content: "";
+.enemy-part {
   position: absolute;
-  left: 5px;
-  right: 5px;
-  top: 14px;
-  border-top: 3px dashed rgba(241, 225, 194, 0.55);
-}
-
-.enemy-arm,
-.enemy-leg {
-  position: absolute;
-  z-index: 3;
   display: block;
-  border: 3px solid var(--ink);
-  border-radius: 8px;
-  background: #ded1b7;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+/* 身体素材接近正方形，必须拉伸到长盒子，否则 contain 会把可见身体压回短方块。 */
+.enemy-part.enemy-body {
+  object-fit: fill;
 }
 
 .enemy-arm {
   z-index: 5;
-  left: -5px;
-  width: 31px;
-  height: 9px;
-  transform-origin: 100% 50%;
+  left: -8px;
+  width: 43px;
+  height: 20px;
+  transform-origin: 100% 0;
 }
 
 .enemy-arm::before {
-  content: "";
-  position: absolute;
-  left: -6px;
-  top: 50%;
-  width: 9px;
-  height: 9px;
-  border: 2px solid var(--ink);
-  border-radius: 50%;
-  background: #ded1b7;
-  transform: translateY(-50%);
+  content: none;
 }
 
-.enemy-arm-left { top: 43px; animation: reachGrabUpper 0.34s ease-in-out infinite alternate; }
-.enemy-arm-right { top: 51px; animation: reachGrabLower 0.34s ease-in-out -0.17s infinite alternate; }
+.enemy-arm-left { left: -3px; top: 47px; animation: reachGrabLower 0.34s ease-in-out -0.17s infinite alternate; }
+.enemy-arm-right { top: 41px; animation: reachGrabUpper 0.34s ease-in-out infinite alternate; }
 
 .enemy-leg {
-  top: 69px;
-  width: 9px;
-  height: 31px;
-  background: #4d4544;
+  z-index: 3;
+  top: 75px;
+  width: 13px;
+  height: 25px;
   transform-origin: 50% 0;
 }
 
-.enemy-leg-left { left: 29px; z-index: 4; animation: legCrossLeft 0.34s ease-in-out infinite alternate; }
+.enemy-leg-left { left: 25px; z-index: 4; animation: legCrossLeft 0.34s ease-in-out infinite alternate; }
 .enemy-leg-right { left: 38px; z-index: 3; animation: legCrossRight 0.34s ease-in-out infinite alternate; }
+
+.enemy-tail {
+  z-index: 2;
+  left: 44px;
+  top: 48px;
+  width: 39px;
+  height: 30px;
+  transform: rotate(8deg);
+  transform-origin: left center;
+  animation: enemyTailWag .42s ease-in-out infinite alternate;
+}
 
 .enemy-shadow {
   position: absolute;
@@ -1139,11 +1338,63 @@ button:focus-visible {
 
 .hua-ball {
   z-index: 10;
-  width: 62px;
-  height: 78px;
+  width: 83px;
+  height: 104px;
   pointer-events: none;
   will-change: left, top;
 }
+
+.hua-ball-impact-body {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+}
+
+.hua-drop-dust {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  bottom: -4px;
+  width: 174px;
+  height: 54px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.hua-drop-dust::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 5px;
+  width: 88px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(91, 72, 55, .38);
+  transform: translateX(-50%) scaleX(.2);
+  animation: huaDustRing .44s ease-out both;
+}
+
+.hua-drop-dust span {
+  --dust-x: -68px;
+  --dust-y: -12px;
+  position: absolute;
+  left: 50%;
+  bottom: 6px;
+  width: 27px;
+  height: 20px;
+  border-radius: 52% 48% 46% 54%;
+  background: #bba582;
+  box-shadow: inset -4px -3px 0 rgba(94, 70, 50, .22);
+  opacity: 0;
+  animation: huaDustBurst .44s cubic-bezier(.18, .66, .3, 1) both;
+}
+
+.hua-drop-dust span:nth-child(2) { --dust-x: -45px; --dust-y: -29px; width: 22px; height: 18px; }
+.hua-drop-dust span:nth-child(3) { --dust-x: -20px; --dust-y: -21px; width: 20px; height: 15px; }
+.hua-drop-dust span:nth-child(4) { --dust-x: 21px; --dust-y: -24px; width: 23px; height: 17px; }
+.hua-drop-dust span:nth-child(5) { --dust-x: 48px; --dust-y: -31px; width: 21px; height: 17px; }
+.hua-drop-dust span:nth-child(6) { --dust-x: 70px; --dust-y: -11px; width: 28px; height: 19px; }
 
 .hua-ball-sprite {
   width: 100%;
@@ -1167,6 +1418,15 @@ button:focus-visible {
     drop-shadow(4px 5px 0 rgba(37, 27, 23, 0.36));
 }
 
+/* 单跑道花花完成一次撞击后向画面下方掉出，避免命中瞬间直接闪退。 */
+.hua-ball.is-falling {
+  animation: huaBallDropOut .42s cubic-bezier(.36, .02, .78, .42) both;
+}
+
+.hua-ball.is-falling .hua-ball-sprite {
+  animation: none;
+}
+
 .hit-effect {
   z-index: 12;
   display: flex;
@@ -1180,6 +1440,7 @@ button:focus-visible {
     0 -3px var(--red-dark);
   animation: hitPop 0.65s steps(5, end) both;
   pointer-events: none;
+  margin-top: -24px;
 }
 
 .hit-effect strong {
@@ -1229,7 +1490,7 @@ button:focus-visible {
 .combo-badge {
   position: absolute;
   z-index: 15;
-  top: 5%;
+  top: 2%;
   left: 50%;
   display: flex;
   align-items: baseline;
@@ -1508,6 +1769,7 @@ button:focus-visible {
 }
 
 .game-controls {
+  position: relative;
   min-height: 68px;
   padding: 9px 18px;
   display: flex;
@@ -1628,13 +1890,14 @@ button:focus-visible {
 }
 
 @keyframes reachGrabUpper {
-  from { transform: rotate(-10deg) translateX(0); }
-  to { transform: rotate(-3deg) translateX(-5px); }
+  from { transform: rotate(-7deg); }
+  /* 后侧手臂以素材右上角为轴，正角度会让左侧手掌抬得更高。 */
+  to { transform: rotate(8deg); }
 }
 
 @keyframes reachGrabLower {
-  from { transform: rotate(9deg) translateX(-2px); }
-  to { transform: rotate(2deg) translateX(-7px); }
+  from { transform: rotate(6deg); }
+  to { transform: rotate(2deg); }
 }
 
 @keyframes legCrossLeft {
@@ -1650,6 +1913,22 @@ button:focus-visible {
 @keyframes huaRoll {
   from { transform: translateZ(0) rotate(0deg); }
   to { transform: translateZ(0) rotate(360deg); }
+}
+
+@keyframes huaDustBurst {
+  0% { opacity: 0; transform: translate(-50%, 0) scale(.3); }
+  18% { opacity: 1; }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--dust-x)), var(--dust-y)) scale(1.32); }
+}
+
+@keyframes huaDustRing {
+  0% { opacity: 0; transform: translateX(-50%) scaleX(.2); }
+  22% { opacity: .88; }
+  100% { opacity: 0; transform: translateX(-50%) scaleX(1.9); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hua-drop-dust { display: none; }
 }
 
 @keyframes hitPop {
@@ -1668,6 +1947,10 @@ button:focus-visible {
 
 @keyframes statusBlink {
   50% { opacity: 0.45; }
+}
+
+@keyframes enemyTailWag {
+  to { transform: rotate(8deg); }
 }
 
 @media (max-width: 900px) {
@@ -1819,8 +2102,8 @@ button:focus-visible {
   }
 
   .hua-ball {
-    width: 49px;
-    height: 64px;
+    width: 65px;
+    height: 85px;
   }
 
   .tutorial-note {
@@ -1868,7 +2151,7 @@ button:focus-visible {
   right: 0;
   width: 34px;
   height: 34px;
-  background: linear-gradient(225deg, #7c6d5f 0 48%, #d8c7a8 50% 100%);
+  background: linear-gradient(225deg, #DFD8C3 0 48%, #d8c7a8 50% 100%);
   pointer-events: none;
 }
 
@@ -1912,50 +2195,10 @@ button:focus-visible {
 .versus-artwork .versus-luca {
   position: absolute;
   z-index: 4;
-  right: 4%;
-  bottom: 7%;
-  width: 39%;
-  height: 61%;
-  transform: rotate(7deg);
+  width: 72px;
+  height: 102px;
+  transform-origin: 50% 100%;
 }
-
-.versus-artwork .versus-luca img {
-  position: absolute;
-  z-index: 2;
-  top: 0;
-  left: 50%;
-  width: 100%;
-  height: 55%;
-  object-fit: contain;
-  image-rendering: pixelated;
-  transform: translateX(-50%);
-}
-
-.versus-artwork .versus-luca span {
-  position: absolute;
-  left: 50%;
-  bottom: 7%;
-  width: 24%;
-  height: 48%;
-  border: 5px solid var(--ink);
-  background: #b9a171;
-  transform: translateX(-50%);
-}
-
-.versus-artwork .versus-luca span::before,
-.versus-artwork .versus-luca span::after {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  top: 5px;
-  width: 55%;
-  height: 68%;
-  border: 4px solid var(--ink);
-  background: #628490;
-}
-
-.versus-artwork .versus-luca span::before { right: 70%; transform: rotate(24deg); }
-.versus-artwork .versus-luca span::after { left: 70%; transform: rotate(-24deg); }
 
 .main-menu-card {
   z-index: 12;
@@ -2046,17 +2289,21 @@ button:focus-visible {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto 58px;
   align-items: center;
-  gap: 3px;
+  gap: 7px;
 }
 
 .matchup-cat-group {
   position: relative;
   height: 78px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0;
 }
 
 .matchup-hua {
-  position: absolute;
-  bottom: 0;
+  position: relative;
+  flex: 0 0 46px;
   width: 46px;
   height: 67px;
   object-fit: contain;
@@ -2064,9 +2311,9 @@ button:focus-visible {
   background: transparent;
 }
 
-.matchup-hua-1 { left: 0; transform: rotate(-10deg); }
-.matchup-hua-2 { left: 29%; bottom: 7px; transform: rotate(2deg); }
-.matchup-hua-3 { right: 0; transform: rotate(9deg); }
+.matchup-hua + .matchup-hua { margin-left: -15px; }
+.matchup-hua-1 { transform: rotate(-6deg); }
+.matchup-hua-2 { transform: rotate(5deg); }
 
 .matchup-vs {
   color: #f1c55f;
@@ -2079,13 +2326,39 @@ button:focus-visible {
   transform: rotate(-8deg);
 }
 
-.matchup-luca {
+.matchup-enemy-group {
   width: 58px;
   height: 51px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.matchup-enemy-group .enemy-avatar {
+  flex: 0 0 52px;
+  width: 52px;
+  height: 51px;
+  transform: rotate(7deg);
+}
+
+.matchup-enemy-group .enemy-avatar + .enemy-avatar {
+  margin-left: -14px;
+  transform: rotate(-5deg);
+}
+
+.enemy-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+}
+
+.enemy-avatar-image {
+  display: block;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
   image-rendering: pixelated;
-  border: 0;
-  transform: rotate(7deg);
 }
 
 .level-card .completion-label,
@@ -2196,13 +2469,7 @@ button:focus-visible {
 .bestiary-module > span { color: var(--red-dark); font-size: 11px; font-weight: 1000; letter-spacing: .12em; }
 .bestiary-module > strong { margin-top: 5px; font-size: clamp(38px, 6vw, 70px); }
 .bestiary-module > small { margin-top: 4px; font-size: 11px; font-weight: 900; }
-.enemy-module > img { position: absolute; right: 6%; bottom: 4%; width: 68%; height: 70%; object-fit: contain; image-rendering: pixelated; }
-
-.catalog-cat-pile { position: absolute; inset: 30% 4% 2%; }
-.catalog-cat-pile img { position: absolute; bottom: 0; width: 42%; height: 95%; object-fit: contain; }
-.catalog-cat-pile img:nth-child(1) { left: 0; transform: rotate(-12deg); }
-.catalog-cat-pile img:nth-child(2) { left: 29%; bottom: 6%; z-index: 2; }
-.catalog-cat-pile img:nth-child(3) { right: 0; transform: rotate(12deg); }
+.enemy-module > .enemy-avatar { position: absolute; right: 6%; bottom: 4%; width: 68%; height: 70%; }
 
 .catalog-list { display: grid; place-items: center; }
 .catalog-entry {
@@ -2219,7 +2486,7 @@ button:focus-visible {
 }
 .catalog-entry-image { position: relative; height: 300px; }
 .catalog-entry-image > img { width: 100%; height: 100%; object-fit: contain; }
-.catalog-entry .catalog-cat-pile { position: relative; inset: auto; }
+.catalog-entry-image > .enemy-avatar { width: 100%; height: 100%; }
 .catalog-entry span { color: var(--red-dark); font-size: 11px; font-weight: 1000; letter-spacing: .12em; }
 .catalog-entry h1 { margin: 5px 0 12px; font-size: clamp(38px, 6vw, 68px); letter-spacing: -.09em; }
 .catalog-entry p { font-size: 14px; font-weight: 800; line-height: 1.7; }
@@ -2233,7 +2500,8 @@ button:focus-visible {
 .matchup-preview.is-large .matchup-cat-group { height: 150px; }
 .matchup-preview.is-large .matchup-hua { width: 95px; height: 140px; }
 .matchup-preview.is-large .matchup-vs { font-size: 48px; }
-.matchup-preview.is-large .matchup-luca { width: 130px; height: 112px; }
+.matchup-preview.is-large .matchup-enemy-group { width: 130px; height: 112px; }
+.matchup-preview.is-large .matchup-enemy-group .enemy-avatar { width: 108px; height: 106px; flex-basis: 108px; }
 .briefing-types { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; text-align: left; }
 .briefing-types strong, .briefing-types small { display: block; }
 .briefing-types strong { margin-top: 4px; font-size: 20px; }
@@ -2269,10 +2537,11 @@ button:focus-visible {
 
 .versus-artwork.is-compact .versus-hua { left: 0; bottom: 0; width: 42%; height: 92%; }
 .versus-artwork.is-compact .versus-word { top: 55%; left: 52%; font-size: 22px; -webkit-text-stroke-width: 1px; text-shadow: 2px 2px 0 var(--red-dark); }
-.versus-artwork.is-compact .versus-luca { right: 0; bottom: 0; width: 39%; height: 78%; }
-.versus-artwork.is-compact .versus-luca span { border-width: 2px; }
-.versus-artwork.is-compact .versus-luca span::before,
-.versus-artwork.is-compact .versus-luca span::after { border-width: 1px; }
+.versus-artwork.is-compact .versus-luca {
+  right: 0;
+  bottom: 0;
+  transform: scale(.46) rotate(2deg);
+}
 
 .game-wordmark.is-compact {
   font-size: 21px;
@@ -2285,23 +2554,10 @@ button:focus-visible {
 .home-zone { z-index: 7; }
 .home-line { z-index: 40; }
 
-.enemy-body { background: var(--enemy-body-color, #b9a171); }
-.luca-enemy[data-variant="1"] .enemy-body,
-.luca-enemy[data-variant="2"] .enemy-body { background: var(--enemy-body-color, #b9a171); }
-
 .enemy-body::after {
-  content: attr(data-emblem);
-  inset: 8px 0 auto;
-  border: 0;
-  color: #514638;
-  font-size: 17px;
-  font-weight: 1000;
-  line-height: 1;
-  text-align: center;
+  content: none;
 }
 
-.enemy-arm,
-.enemy-arm::before { background: var(--enemy-arm-color, #628490); }
 .enemy-arm-left { z-index: 7; }
 .enemy-arm-right { z-index: 2; left: 2px; }
 
@@ -2335,7 +2591,8 @@ button:focus-visible {
   .matchup-preview.is-large .matchup-cat-group { height: 118px; }
   .matchup-preview.is-large .matchup-hua { width: 68px; height: 104px; }
   .matchup-preview.is-large .matchup-vs { font-size: 34px; }
-  .matchup-preview.is-large .matchup-luca { width: 90px; height: 78px; }
+  .matchup-preview.is-large .matchup-enemy-group { width: 90px; height: 78px; }
+  .matchup-preview.is-large .matchup-enemy-group .enemy-avatar { width: 76px; height: 74px; flex-basis: 76px; }
   .game-hud { min-height: 76px; grid-template-columns: 1fr minmax(140px, 1.5fr) auto; }
   .hud-brand-zone { min-width: 108px; }
   .versus-artwork.is-compact { display: none; }
@@ -2436,15 +2693,6 @@ button:focus-visible {
 .versus-artwork .versus-word {
   text-shadow: 3px 4px 0 var(--red-dark), -1px -1px 0 var(--ink);
 }
-
-.versus-luca span::before,
-.versus-luca span::after {
-  left: auto;
-  transform-origin: right center;
-}
-
-.versus-luca span::before { right: 67%; transform: rotate(22deg); }
-.versus-luca span::after { right: 82%; transform: rotate(-15deg); }
 
 .info-button {
   top: 17px;
@@ -2551,7 +2799,7 @@ button:focus-visible {
   gap: 4px;
 }
 
-.briefing-type-images img {
+.briefing-type-images > img {
   width: min(72px, 42%);
   height: 76px;
   object-fit: contain;
@@ -2656,49 +2904,54 @@ button:focus-visible {
   image-rendering: pixelated;
 }
 
-.catalog-list { display: block; }
-.catalog-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
-}
-
-.catalog-entry {
-  width: auto;
-  min-height: 260px;
-  padding: 16px;
-  grid-template-columns: 1fr;
-  gap: 8px;
-  align-content: start;
-}
-
-.catalog-entry-image {
-  height: 112px;
-  display: flex;
+.strength-rank {
+  display: inline-flex !important;
   align-items: center;
-  justify-content: center;
-  gap: 3px;
-}
-
-.catalog-entry-image > img {
-  width: min(78px, 48%);
-  height: 108px;
-  object-fit: contain;
-}
-
-.catalog-entry h1 { margin: 3px 0 6px; font-size: clamp(24px, 3vw, 36px); }
-.catalog-entry p { margin: 0 0 8px; font-size: 12px; line-height: 1.45; }
-.catalog-entry small { display: block; font-size: 12px; font-weight: 1000; }
-.catalog-entry.is-placeholder { opacity: .56; background: #dfd5bd; }
-.catalog-entry.is-placeholder .catalog-entry-image {
-  color: #8e8173;
-  font-size: 70px;
+  gap: 4px;
+  color: var(--ink);
   font-weight: 1000;
 }
 
-.strength-stars { color: var(--ink); }
-.strength-stars i { color: #a69c8e; font-style: normal; }
-.strength-stars i.is-active { color: #a2342f; }
+.strength-rank i {
+  min-width: 24px;
+  padding: 2px 6px;
+  border-radius: 2px;
+  color: #fff8e8;
+  font-size: 13px;
+  font-style: normal;
+  line-height: 1.1;
+  text-align: center;
+  text-shadow: 1px 1px 0 rgba(35, 29, 27, .42);
+}
+
+.strength-rank.is-r i { background: #7452a3; }
+.strength-rank.is-s i { color: #49371b; background: #d8ae42; text-shadow: none; }
+.strength-rank.is-a i { background: #b6463f; }
+.strength-rank.is-b i { background: #4f7fa4; }
+.strength-rank.is-c i { background: #64845e; }
+
+.enemy-catalog-properties {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+}
+
+.cat-catalog-properties {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px 8px;
+}
+
+.enemy-speed-property {
+  color: var(--ink);
+  font-weight: 900;
+}
+
+.enemy-speed-property i {
+  color: var(--red-dark);
+  font-style: normal;
+}
 
 /* 关于页 */
 .about-full-row { grid-column: 1 / -1; }
@@ -2864,47 +3117,6 @@ button:focus-visible {
   transform: translateX(18%) scale(1.32) rotate(-1deg);
 }
 
-.versus-arm {
-  display: none;
-}
-
-.versus-artwork:not(.is-compact) .versus-luca span::before,
-.versus-artwork:not(.is-compact) .versus-luca span::after {
-  content: none;
-}
-
-.versus-artwork:not(.is-compact) .versus-luca span {
-  z-index: 3;
-}
-
-.versus-artwork:not(.is-compact) .versus-luca img {
-  z-index: 4;
-}
-
-.versus-artwork:not(.is-compact) .versus-arm {
-  position: absolute;
-  right: 47%;
-  display: block;
-  width: 43%;
-  height: 10%;
-  border: 4px solid var(--ink);
-  border-radius: 999px;
-  background: #628490;
-  transform-origin: right center;
-}
-
-.versus-artwork:not(.is-compact) .versus-arm-back {
-  top: 59%;
-  z-index: 1;
-  transform: rotate(-2deg);
-}
-
-.versus-artwork:not(.is-compact) .versus-arm-front {
-  top: 57%;
-  z-index: 5;
-  transform: rotate(2deg);
-}
-
 .main-menu-card {
   margin-left: 3%;
   transform: translateX(-1%) rotate(-2.4deg);
@@ -3017,25 +3229,116 @@ button:focus-visible {
   box-shadow: 5px 6px 0 rgba(42, 33, 29, .34);
 }
 
-/* 准备防守：移除合并预览后，每个类型都是独立实体卡片 */
+/* 准备防守：两个大类按内部卡片的最大内容宽度伸缩，不强制平分弹窗。 */
+.briefing-overlay {
+  z-index: 38;
+  background: rgba(45, 36, 31, .48);
+  backdrop-filter: none;
+}
+
+/* 开始游戏时弹窗独立向左弹出，遮罩和战场亮度同步渐变，不触发整页翻页/淡入。 */
+.briefing-overlay.is-exiting {
+  animation: briefingBackdropExit .62s ease-out both;
+  pointer-events: none;
+}
+
+.briefing-overlay.is-exiting .briefing-sheet {
+  animation: briefingSheetExit .62s cubic-bezier(.55, -.08, .78, .36) both;
+  will-change: transform, opacity;
+}
+
+.game-page.is-briefing-exiting .battlefield {
+  animation: briefingBattlefieldReveal .62s ease-out both;
+}
+
 .briefing-sheet {
-  width: min(720px, 94%);
+  position: relative;
+  width: min(920px, calc(100% - 42px));
+  max-width: 920px;
+  padding: 18px 34px 16px;
+  text-align: center;
+  transform: rotate(-.5deg);
+}
+
+.briefing-sheet > h1 {
+  margin: 2px 0 4px;
+  font-size: clamp(36px, 4.6vw, 52px);
+  line-height: 1;
+}
+
+.briefing-sheet > p {
+  margin-bottom: 9px;
+}
+
+.briefing-level-label {
+  color: var(--red-dark);
+  font-size: 13px;
+  font-weight: 1000;
+  letter-spacing: .08em;
+}
+
+.briefing-close-button {
+  position: absolute;
+  left: 15px;
+  top: 15px;
+  width: 48px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 2px solid rgba(68, 57, 49, .66);
+  border-radius: 4px;
+  color: #4e4138;
+  background: rgba(234, 220, 186, .92);
+  box-shadow: 3px 4px 0 rgba(49, 40, 34, .24);
+  cursor: pointer;
+  transform: rotate(-2deg);
 }
 
 .briefing-types {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  flex-wrap: wrap;
   gap: 22px;
 }
 
+.briefing-type-category {
+  width: max-content;
+  max-width: 100%;
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.briefing-type-category > h2 {
+  margin: 0 0 7px;
+  color: var(--red-dark);
+  font-size: 17px;
+  letter-spacing: .08em;
+  text-align: left;
+}
+
+.briefing-individual-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .briefing-types .briefing-type-card {
-  min-height: 218px;
-  padding: 19px;
+  width: 132px;
+  min-height: 150px;
+  padding: 9px 11px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  border: 4px solid var(--ink);
+  border: 2px solid rgba(112, 94, 78, .52);
   background: #f4e7c7;
-  box-shadow: 7px 8px 0 rgba(48, 38, 32, .28);
+  box-shadow: 4px 5px 0 rgba(48, 38, 32, .18);
   transform: rotate(-1deg);
+  box-sizing: border-box;
 }
 
 .briefing-types .briefing-type-card:nth-child(even) {
@@ -3043,16 +3346,42 @@ button:focus-visible {
 }
 
 .briefing-type-images {
-  height: 118px;
+  height: 70px;
 }
 
-.briefing-type-images img {
-  width: min(98px, 46%);
-  height: 114px;
+.briefing-type-images > .enemy-avatar {
+  width: 76px;
+  height: 70px;
+  flex: 0 0 76px;
 }
 
-.briefing-types .briefing-type-card > span { font-size: 13px; }
-.briefing-types .briefing-type-card > strong { font-size: 25px; }
+.briefing-type-images > img {
+  width: min(76px, 68%);
+  height: 70px;
+}
+
+.briefing-types .briefing-type-card > strong {
+  width: 100%;
+  font-size: 17px;
+  text-align: center;
+}
+.briefing-start {
+  margin-top: 12px;
+}
+.briefing-types .briefing-score-note {
+  margin-top: 6px;
+  color: var(--red-dark);
+  font-size: 16px;
+  font-weight: 1000;
+  line-height: 1;
+  text-align: center;
+}
+
+.briefing-close-button:hover {
+  background: #f1e3c2;
+  transform: translateY(-1px) rotate(-2deg);
+  box-shadow: 4px 5px 0 rgba(49, 40, 34, .24);
+}
 
 /* 游戏画面层级与按钮 */
 .battlefield::before { z-index: 1; }
@@ -3092,7 +3421,9 @@ button:focus-visible {
 .catalog-list {
   height: 100%;
   padding: 12px 20px 16px;
+  display: block;
   overflow: hidden;
+  place-items: initial;
 }
 
 .catalog-grid {
@@ -3101,9 +3432,12 @@ button:focus-visible {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   grid-template-rows: repeat(3, minmax(0, 1fr));
   gap: 10px;
+  width: 100%;
+  max-width: none;
 }
 
 .catalog-entry {
+  width: auto;
   min-height: 0;
   padding: 9px;
   grid-template-columns: 68px minmax(0, 1fr);
@@ -3113,11 +3447,25 @@ button:focus-visible {
   overflow: hidden;
   border-width: 3px;
   box-shadow: 4px 5px 0 rgba(48, 38, 32, .28);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
+
+.catalog-entry:not(:disabled):hover {
+  transform: translateY(-3px) rotate(-.5deg);
+  box-shadow: 6px 8px 0 rgba(48, 38, 32, .25);
+}
+
+.catalog-entry:disabled { cursor: default; }
 
 .catalog-entry-image {
   width: 68px;
   height: 92px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   gap: 0;
 }
 
@@ -3130,6 +3478,7 @@ button:focus-visible {
   margin: 2px 0 4px;
   font-size: clamp(17px, 1.55vw, 24px);
   line-height: 1;
+  font-weight: 1000;
 }
 
 .catalog-entry p {
@@ -3144,15 +3493,126 @@ button:focus-visible {
 
 .catalog-entry span,
 .catalog-entry small { font-size: 10px; }
+.catalog-entry small { display: block; font-weight: 1000; }
+.catalog-entry.is-placeholder { opacity: .56; background: #dfd5bd; }
 .catalog-entry.is-placeholder .catalog-entry-image { font-size: 44px; }
 
-.position-tag {
+.position-property {
+  display: flex !important;
+  align-items: center;
+  gap: 4px;
+  color: #5b5148;
+  font-style: normal;
+}
+
+.position-property i {
   width: max-content;
   padding: 4px 7px;
   border: 2px solid var(--ink);
   background: #d6bd82;
   box-shadow: 2px 2px 0 rgba(48, 38, 32, .25);
+  font-style: normal;
   transform: rotate(-2deg);
+}
+
+.catalog-detail-content {
+  display: grid;
+  place-items: center;
+  padding: 26px;
+}
+
+.catalog-detail-sheet {
+  width: min(650px, 92%);
+  height: min(500px, 92%);
+  padding: 24px 34px 30px;
+  display: grid;
+  grid-template-rows: minmax(0, 1.55fr) minmax(150px, .85fr);
+  gap: 14px;
+  border: 3px solid rgba(74, 61, 51, .72);
+  background:
+    repeating-linear-gradient(0deg, transparent 0 26px, rgba(84, 65, 48, .07) 26px 27px),
+    #f2e6cb;
+  box-shadow: 8px 9px 0 rgba(48, 38, 32, .28);
+  transform: rotate(-.7deg);
+  animation: cardArrive .38s ease-out both;
+}
+
+.catalog-detail-image {
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.catalog-detail-image > img {
+  width: min(310px, 72%);
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(7px 8px 0 rgba(47, 37, 31, .2));
+}
+
+.catalog-detail-image.has-multiple-art > img {
+  width: min(220px, 46%);
+}
+
+.catalog-detail-enemy-model {
+  position: relative;
+  width: 72px;
+  height: 102px;
+  transform: scale(2.15);
+  transform-origin: center;
+  filter: drop-shadow(3px 4px 0 rgba(47, 37, 31, .2));
+  animation: catalogEnemyIdle .72s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+@keyframes catalogEnemyIdle {
+  from { transform: scale(2.15) translateY(1px); }
+  to { transform: scale(2.15) translateY(-2px); }
+}
+
+.catalog-detail-copy {
+  align-self: end;
+  text-align: center;
+}
+
+.catalog-detail-copy > span {
+  color: var(--red-dark);
+  font-size: 12px;
+  font-weight: 1000;
+  letter-spacing: .12em;
+}
+
+.catalog-detail-copy h1 {
+  margin: 3px 0 8px;
+  font-size: clamp(30px, 4vw, 48px);
+  font-weight: 1000;
+}
+
+.catalog-detail-copy p {
+  margin: 0 auto 12px;
+  max-width: 500px;
+  color: #5d5047;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.catalog-detail-copy .catalog-trait {
+  margin-top: -5px;
+  color: #51453e;
+  font-size: 13px;
+}
+
+.catalog-detail-copy .catalog-trait strong {
+  color: var(--red-dark);
+  font-weight: 1000;
+}
+
+.catalog-detail-copy .position-property,
+.catalog-detail-copy .enemy-catalog-properties {
+  width: max-content;
+  margin-inline: auto;
 }
 
 /* 关于页 */
@@ -3372,23 +3832,9 @@ button:focus-visible {
 }
 
 .versus-artwork:not(.is-compact) .versus-luca {
-  right: -2%;
-  width: 46%;
-  height: 68%;
-}
-
-.versus-artwork:not(.is-compact) .versus-luca img {
-  top: -5%;
-  width: 118%;
-  height: 64%;
-}
-
-.versus-artwork .versus-luca span,
-.versus-artwork:not(.is-compact) .versus-arm,
-.enemy-body,
-.enemy-arm,
-.enemy-arm::before {
-  background: var(--luca-clothes);
+  right: 9%;
+  bottom: 1%;
+  transform: scale(3.35) rotate(2deg);
 }
 
 .matchup-hua-1 { left: 5%; }
@@ -3442,19 +3888,20 @@ button:focus-visible {
 }
 
 .bestiary-single-cat,
-.enemy-module > img {
+.enemy-module > .enemy-avatar {
   top: 50%;
   bottom: auto;
   transform: translateY(-50%);
 }
 
-.enemy-module > img {
+.enemy-module > .enemy-avatar {
   height: 76%;
 }
 
-.catalog-entry.is-enemy .catalog-entry-image > img {
+.catalog-entry.is-enemy .catalog-entry-image > .enemy-avatar {
   width: 76%;
   height: 100%;
+  margin: 0 auto;
   transform: scale(1.12);
 }
 
@@ -3555,12 +4002,17 @@ body {
   display: none;
 }
 
+.main-menu-hero.is-large {
+  /* 仅作为 React 组合边界，不新增网格盒子，保持原有模型与标题坐标系。 */
+  display: contents;
+}
+
 .main-menu-wordmark {
   position: absolute;
   z-index: 24;
-  left: 39%;
+  left: 34.5%;
   top: 48%;
-  width: clamp(150px, 17vw, 235px);
+  width: clamp(280px, 25vw, 430px);
   transform: translate(-50%, -50%);
   pointer-events: none;
 }
@@ -3573,26 +4025,110 @@ body {
   line-height: .88;
   white-space: normal;
   transform: none;
+  filter: saturate(.88) contrast(1.08);
 }
 
-.main-menu-wordmark .game-wordmark span {
+.main-menu-wordmark .game-wordmark span,
+.main-menu-wordmark .game-wordmark em {
   display: block;
   font-style: normal;
-  text-shadow: 3px 3px 0 var(--red-dark), 5px 5px 0 rgba(40, 35, 33, .12);
+  /* 对扫描线像素本身投影，阴影也保留线间镂空，不生成完整实心字形。 */
+  text-shadow: none;
+  filter: drop-shadow(4px 5px 0 rgba(31, 27, 25, .72));
   transform: none;
+  color: transparent;
+  /* 每条扫描线之间完全透明，让纸张纹理真正从字形内部透出来。 */
+  background: repeating-linear-gradient(
+    180deg,
+    #d9b86f 0 2.5px,
+    transparent 2.5px 5px
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-stroke: 0;
+}
+
+/* 主菜单两侧名称使用两倍字号和常规字重，VS 尺寸保持不变。 */
+.main-menu-wordmark .game-wordmark span {
+  font-size: 2em;
+  font-weight: 400;
+  line-height: .72;
+  white-space: nowrap;
+}
+
+/* 只给“路卡”字样使用冷蓝色，角色模型保留原始素材色彩。 */
+.main-menu-wordmark .game-wordmark span:last-child {
+  background: repeating-linear-gradient(
+    180deg,
+    #6f9eaf 0 2.5px,
+    transparent 2.5px 5px
+  );
+  position: relative;
+  z-index: 1;
+  top: -8px;
+  background-clip: text;
+  -webkit-background-clip: text;
+  transform: matrix3d(
+    1, 0, 0, 0,
+    0, 1, 0, -.0028,
+    0, 0, 1, 0,
+    0, 0, 0, 1
+  );
+  transform-origin: center bottom;
+}
+
+/* 两组相反的透视项：花花上宽下窄，路卡上窄下宽，扫描线与镂空阴影同步变形。 */
+.main-menu-wordmark .game-wordmark span:first-child {
+  position: relative;
+  z-index: 1;
+  top: 8px;
+  transform: matrix3d(
+    1, 0, 0, 0,
+    0, 1, 0, .0014,
+    0, 0, 1, 0,
+    0, 0, 0, 1
+  );
+  transform-origin: center top;
 }
 
 .main-menu-wordmark .game-wordmark em {
-  display: block;
-  margin: 5px 0 3px;
-  font-size: .53em;
+  position: relative;
+  z-index: 3;
+  margin: -4px 0 -5px;
+  font-size: .72em;
   font-style: italic;
-  text-shadow: 2px 2px 0 var(--red-dark);
+  background: repeating-linear-gradient(
+    180deg,
+    #e2bd4f 0 2.5px,
+    transparent 2.5px 5px
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-stroke: 1.1px rgba(39, 34, 31, .68);
+  /* VS 位于两组字之上，使用柔和扩散阴影而非扫描线的硬位移阴影。 */
+  filter: drop-shadow(0 6px 7px rgba(31, 27, 25, .52));
   transform: skewX(-12deg);
 }
 
 .main-menu-card.paper-card {
   transform: translate(7%, 11%);
+}
+
+.front-page .versus-artwork:not(.is-compact) .versus-luca {
+  right: 17%;
+  bottom: 7%;
+}
+
+.front-page .versus-artwork:not(.is-compact) .versus-hua {
+  bottom: -4%;
+  animation:
+    characterFromLeft 520ms 60ms cubic-bezier(.2, .82, .22, 1.08) both,
+    menuFloraIdleSpin 14s 580ms linear infinite;
+}
+
+@keyframes menuFloraIdleSpin {
+  from { rotate: 0deg; }
+  to { rotate: 360deg; }
 }
 
 .level-board-title {
@@ -3710,6 +4246,11 @@ html[data-page-transition="fade"]::view-transition-new(game-panel) {
   opacity: .76;
 }
 
+body.is-dragging-cat,
+body.is-dragging-cat * {
+  cursor: grabbing !important;
+}
+
 .cat-inventory-card:disabled {
   cursor: not-allowed;
   filter: grayscale(.75);
@@ -3789,7 +4330,11 @@ html[data-page-transition="fade"]::view-transition-new(game-panel) {
 .loading-paper > small { animation: gentleFade 300ms 320ms ease-out both; }
 
 .front-page .front-page-noise { animation: gentleFade 360ms ease-out both; }
-.front-page .versus-hua { animation: characterFromLeft 520ms 60ms cubic-bezier(.2, .82, .22, 1.08) both; }
+.front-page .versus-hua {
+  animation:
+    characterFromLeft 520ms 60ms cubic-bezier(.2, .82, .22, 1.08) both,
+    menuFloraIdleSpin 14s 580ms linear infinite;
+}
 .front-page .versus-luca { animation: characterFromRight 540ms 110ms cubic-bezier(.2, .82, .22, 1.08) both; }
 .front-page .main-menu-wordmark { animation: mainWordmarkArrive 440ms 260ms cubic-bezier(.2, .85, .25, 1.18) both; }
 .front-page .main-menu-actions > .primary-button { animation: softRise 360ms 360ms ease-out backwards; }
@@ -3816,13 +4361,13 @@ html[data-page-transition="fade"]::view-transition-new(game-panel) {
 .level-select-page .level-card:nth-child(4) { animation-delay: 310ms; }
 .level-select-page .level-card:nth-child(5) { animation-delay: 360ms; }
 
-.briefing-page .briefing-sheet { animation: softRise 420ms 80ms ease-out backwards; }
-.briefing-page .briefing-sheet > h1 { animation: wordmarkPop 380ms 150ms ease-out both; }
-.briefing-page .briefing-sheet > p { animation: gentleFade 280ms 220ms ease-out both; }
-.briefing-page .briefing-type-card { animation: cardArrive 380ms ease-out backwards; }
-.briefing-page .briefing-type-card:nth-child(1) { animation-delay: 280ms; }
-.briefing-page .briefing-type-card:nth-child(2) { animation-delay: 350ms; }
-.briefing-page .briefing-start { animation: softRise 340ms 430ms ease-out backwards; }
+.game-page.is-briefing .briefing-sheet { animation: softRise 420ms 80ms ease-out backwards; }
+.game-page.is-briefing .briefing-sheet > h1 { animation: wordmarkPop 380ms 150ms ease-out both; }
+.game-page.is-briefing .briefing-sheet > p { animation: gentleFade 280ms 220ms ease-out both; }
+.game-page.is-briefing .briefing-type-category { animation: cardArrive 380ms ease-out backwards; }
+.game-page.is-briefing .briefing-type-category:nth-child(1) { animation-delay: 280ms; }
+.game-page.is-briefing .briefing-type-category:nth-child(2) { animation-delay: 350ms; }
+.game-page.is-briefing .briefing-start { animation: softRise 340ms 430ms ease-out backwards; }
 
 .bestiary-page .bestiary-module { animation: cardArrive 440ms ease-out backwards; }
 .bestiary-page .cat-module { animation-delay: 100ms; }
@@ -3884,8 +4429,8 @@ html[data-page-transition="fade"]::view-transition-new(game-panel) {
 }
 
 @keyframes characterFromRight {
-  from { opacity: 0; transform: translateX(38px) scale(.92) rotate(7deg); }
-  to { opacity: 1; transform: translateX(0) scale(1) rotate(7deg); }
+  from { opacity: 0; transform: translateX(16px) scale(3.08) rotate(2deg); }
+  to { opacity: 1; transform: translateX(0) scale(3.35) rotate(2deg); }
 }
 
 @keyframes wordmarkPop {
@@ -3971,8 +4516,18 @@ html[data-page-transition="fade"]::view-transition-new(game-panel) {
 }
 
 .main-menu-card .main-menu-actions {
-  transform: scale(1.08);
+  transform: scale(1.16);
   transform-origin: center;
+}
+
+.front-page .main-menu-actions > .primary-button {
+  font-size: 22.67px;
+  font-weight: 400;
+}
+
+.front-page .main-menu-actions .menu-secondary-button {
+  font-size: 17.33px;
+  font-weight: 400;
 }
 
 .back-button {
@@ -3988,36 +4543,33 @@ html[data-page-transition="fade"]::view-transition-new(game-panel) {
 .level-rating-stickers {
   right: 4px;
   bottom: 51px;
-  gap: 4px;
+  gap: 0;
 }
 
 .level-rating-stickers i {
-  width: 28px;
-  height: 28px;
+  width: 31px;
+  height: 40px;
   padding: 0;
   display: grid;
   place-items: center;
   overflow: visible;
-  border: 2px dashed #827a70;
-  border-radius: 50%;
+  border: 0;
+  border-radius: 0;
   color: #aaa399;
-  background: rgba(232, 224, 207, .72);
-  font-size: 34px;
-  -webkit-text-stroke: 1.4px #514a43;
+  background: transparent;
+  font-size: 43px;
+  -webkit-text-stroke: 1.6px #514a43;
   filter: drop-shadow(2px 2px 0 rgba(50, 41, 35, .22));
 }
 
 .level-rating-stickers i > span {
   display: block;
   line-height: 1;
-  transform: translateY(-6px);
+  transform: translateY(-3px);
 }
 
 .level-rating-stickers i.is-active {
-  border-style: solid;
-  border-color: #68573f;
   color: #f1c85f;
-  background: #eee0bd;
 }
 
 .victory-rating i {
@@ -4110,11 +4662,13 @@ html[data-page-transition="fade"]::view-transition-new(game-panel) {
 
 .cat-drag-ghost {
   position: fixed;
+  left: var(--drag-x);
+  top: var(--drag-y);
   z-index: 1000;
   width: 78px;
   height: 88px;
   pointer-events: none;
-  transform: translate(-50%, -50%) rotate(8deg) scale(1.05);
+  transform: translate3d(-50%, -50%, 0) rotate(8deg) scale(1.05);
   filter: drop-shadow(6px 8px 0 rgba(46, 37, 31, .28));
   animation: dragGhostBob 380ms ease-in-out infinite alternate;
 }
@@ -4125,27 +4679,23 @@ html[data-page-transition="fade"]::view-transition-new(game-panel) {
   object-fit: contain;
 }
 
-@keyframes dragGhostBob {
-  to { transform: translate(-50%, calc(-50% - 4px)) rotate(13deg) scale(1.08); }
+@media (max-width: 767px) and (orientation: portrait) {
+  body > .cat-drag-ghost {
+    transform: translate(-50%, -50%) rotate(98deg) scale(1.05);
+    animation: mobileDragGhostBob 380ms ease-in-out infinite alternate;
+  }
 }
 
-.lane-field.is-single-lane {
-  background:
-    linear-gradient(to bottom, rgba(239, 229, 209, .52) 0 28%, transparent 28% 72%, rgba(239, 229, 209, .52) 72%),
-    linear-gradient(90deg, rgba(76, 62, 52, .11) 0 22%, transparent 22%),
-    rgba(111, 133, 117, .24);
+@keyframes mobileDragGhostBob {
+  to { transform: translate3d(-50%, calc(-50% - 4px), 0) rotate(103deg) scale(1.08); }
+}
+
+@keyframes dragGhostBob {
+  to { transform: translate3d(-50%, calc(-50% - 4px), 0) rotate(13deg) scale(1.08); }
 }
 
 .lane-field {
   right: -3.5%;
-}
-
-.lane-field.is-single-lane .lane {
-  position: absolute;
-  inset: 28% 0 auto;
-  height: 44% !important;
-  border-top: 2px dashed rgba(48, 41, 36, .5);
-  border-bottom: 2px dashed rgba(48, 41, 36, .5);
 }
 
 .game-controls p {
@@ -4176,11 +4726,87 @@ html[data-page-transition="fade"]::view-transition-new(game-panel) {
 
 .pause-message-overlay {
   width: 100%;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 18px;
   border: 0;
   background: rgba(38, 30, 26, .56);
   backdrop-filter: none;
   cursor: pointer;
   pointer-events: auto;
+}
+
+.pause-state-icon {
+  position: relative;
+  width: 82px;
+  height: 82px;
+  display: grid;
+  place-items: center;
+  color: #f4ead7;
+  background: transparent;
+  box-shadow: none;
+  opacity: .2;
+  text-shadow: 3px 3px 0 rgba(48, 38, 33, .82);
+  transition: transform 160ms ease;
+}
+
+.pause-exit-button {
+  position: absolute;
+  left: 22px;
+  top: 20px;
+  z-index: 3;
+  width: 48px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 2px solid rgba(68, 57, 49, .66);
+  border-radius: 4px;
+  color: #4e4138;
+  background: rgba(234, 220, 186, .92);
+  box-shadow: 3px 4px 0 rgba(49, 40, 34, .24);
+  cursor: pointer;
+  transform: rotate(-2deg);
+  transition: transform 120ms ease, background 120ms ease, box-shadow 120ms ease;
+}
+
+.pause-exit-button:hover {
+  color: #4e4138;
+  background: #f1e3c2;
+  transform: translateY(-1px) rotate(-2deg);
+  box-shadow: 4px 5px 0 rgba(49, 40, 34, .24);
+}
+
+.pause-state-icon svg {
+  position: absolute;
+  transition: opacity 130ms ease, transform 160ms ease;
+}
+
+.pause-icon-pause {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.pause-icon-play {
+  margin-left: 7px;
+  opacity: 0;
+  transform: scale(.72);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .game-page:hover .pause-state-icon {
+    transform: scale(1.07) rotate(-2deg);
+  }
+
+  .game-page:hover .pause-icon-pause {
+    opacity: 0;
+    transform: scale(.72);
+  }
+
+  .game-page:hover .pause-icon-play {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .pause-message {
@@ -4230,6 +4856,8 @@ html[data-page-transition="fade"]::view-transition-new(game-panel) {
 .enemy-death-effect > .enemy-body,
 .enemy-death-effect > .enemy-arm,
 .enemy-death-effect > .enemy-leg,
+.enemy-death-effect > .enemy-tail,
+.enemy-death-effect > .enemy-accessory,
 .enemy-death-head {
   animation: enemyPartScatter .78s cubic-bezier(.18, .72, .28, 1) both;
   will-change: transform, opacity;
@@ -4238,10 +4866,10 @@ html[data-page-transition="fade"]::view-transition-new(game-panel) {
 .enemy-death-head {
   position: absolute;
   z-index: 8;
-  left: 8px;
-  top: -5px;
-  width: 58px;
-  height: 48px;
+  left: 4px;
+  top: -9px;
+  width: 66px;
+  height: 55px;
   object-fit: contain;
   image-rendering: pixelated;
   filter: contrast(1.12) drop-shadow(2px 2px 0 rgba(37, 31, 28, .7));
@@ -4280,6 +4908,24 @@ html[data-page-transition="fade"]::view-transition-new(game-panel) {
   --scatter-rotation: 74deg;
 }
 
+.enemy-death-effect > .enemy-tail {
+  --scatter-x: 46px;
+  --scatter-y: 34px;
+  --scatter-rotation: 96deg;
+}
+
+.enemy-death-effect > .enemy-accessory-glasses {
+  --scatter-x: -38px;
+  --scatter-y: 31px;
+  --scatter-rotation: -128deg;
+}
+
+.enemy-death-effect > .enemy-accessory-laptop {
+  --scatter-x: 42px;
+  --scatter-y: 48px;
+  --scatter-rotation: 72deg;
+}
+
 .enemy-death-dust {
   position: absolute;
   z-index: 1;
@@ -4299,7 +4945,291 @@ html[data-page-transition="fade"]::view-transition-new(game-panel) {
 }
 
 .victory-overlay {
-  animation: resultOverlayReveal .3s .7s ease-out both;
+  animation: resultOverlayReveal .3s ease-out both;
+}
+
+.battlefield.is-red-heat::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 26;
+  box-shadow: inset 0 0 70px 24px rgba(202, 40, 37, .62);
+  animation: redHeatGlow .72s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+.luca-enemy.is-red-heat {
+  filter: sepia(.15) saturate(2.3) hue-rotate(322deg) drop-shadow(0 0 5px rgba(224, 42, 34, .75));
+}
+
+.red-heat-notice {
+  position: absolute;
+  z-index: 32;
+  left: 50%;
+  padding: 10px 18px;
+  border: 0;
+  border-radius: 2px;
+  background: rgba(20, 18, 17, .94);
+  box-shadow: 5px 6px 0 rgba(52, 40, 34, .3);
+  font-weight: 1000;
+  transform: translateX(-50%) rotate(-2deg);
+  pointer-events: none;
+}
+
+.red-heat-notice.is-entered {
+  top: 44%;
+  color: #b62429;
+  font-size: clamp(25px, 3.8vw, 52px);
+  animation: redHeatNoticeIn 1.7s ease both;
+}
+
+.red-heat-notice.is-ended {
+  bottom: 18px;
+  color: #356d89;
+  font-size: clamp(14px, 1.8vw, 23px);
+  animation: redHeatNoticeIn 1.7s ease both;
+}
+
+.settlement-overlay {
+  z-index: 36;
+  background: rgba(46, 37, 31, .42);
+  backdrop-filter: none;
+}
+
+.settlement-inventory-card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 230px;
+  min-height: 250px;
+  padding: 18px 20px;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  color: #54483f;
+  border: 2px solid rgba(116, 97, 77, .62);
+  border-radius: 2px;
+  background: #f1e5ca;
+  box-shadow: 7px 8px 0 rgba(48, 38, 32, .3);
+  transform: translate(-50%, -50%) rotate(-2deg);
+  animation: settlementInventoryArrive .42s cubic-bezier(.16, .78, .2, 1) both;
+}
+
+.settlement-inventory-card small,
+.settlement-inventory-card span { font-weight: 1000; }
+.settlement-inventory-card small { font-size: 13px; }
+.settlement-inventory-card > strong { font-size: 27px; }
+.settlement-inventory-card > span { margin-top: 7px; color: #755e4f; font-size: 14px; }
+
+.settlement-cat-stage {
+  position: relative;
+  width: 126px;
+  height: 132px;
+  display: grid;
+  place-items: center;
+}
+
+.settlement-cat-stage img {
+  width: 112px;
+  height: 126px;
+  object-fit: contain;
+  animation: settlementCatVanish .42s ease-in both;
+}
+
+.settlement-cat-stage.is-first img {
+  animation-duration: .9s;
+}
+
+.settlement-cat-stage b {
+  position: absolute;
+  left: 50%;
+  top: -18px;
+  color: #fff3bd;
+  font-size: 32px;
+  line-height: 1;
+  text-shadow:
+    3px 0 var(--red-dark),
+    -3px 0 var(--red-dark),
+    0 3px var(--red-dark),
+    0 -3px var(--red-dark);
+  transform: translateX(-50%);
+  animation: settlementScoreFloat .42s ease-out both;
+}
+
+.settlement-cat-stage.is-first b { animation-duration: .9s; }
+
+.victory-overlay .result-card {
+  position: relative;
+  padding: 96px 28px 20px;
+  overflow: visible;
+}
+
+.victory-cat-nest {
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  top: 0;
+  width: min(250px, 62%);
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(6px 8px 0 rgba(54, 43, 35, .24));
+  transform: translate(-50%, -50%) rotate(-2deg);
+  pointer-events: none;
+  user-select: none;
+}
+
+.victory-level-tag {
+  position: absolute;
+  z-index: 5;
+  left: -10px;
+  top: 12px;
+  padding: 5px 12px;
+  color: #55483e;
+  border: 2px solid rgba(91, 76, 62, .64);
+  background: #d4c892;
+  box-shadow: 3px 3px 0 rgba(48, 38, 32, .25);
+  font-size: 26px;
+  font-weight: 1000;
+  transform: rotate(-6deg);
+}
+
+.victory-overlay .result-card h2 {
+  max-width: 640px;
+  margin-inline: auto;
+  font-size: clamp(19px, 2.4vw, 27px);
+  line-height: 1.08;
+  letter-spacing: normal;
+}
+
+.victory-overlay .victory-rating {
+  margin: 4px auto -4px;
+  align-items: center;
+  gap: 10px;
+}
+
+.victory-overlay .victory-rating i {
+  color: #aca597;
+  font-size: 88px;
+  opacity: .75;
+}
+
+.victory-overlay .victory-rating i:nth-child(2) {
+  position: relative;
+  top: -17px;
+  font-size: 118px;
+  transform: none;
+}
+
+.victory-overlay .victory-rating i.is-active {
+  animation: victoryStarLight .42s cubic-bezier(.2, .85, .22, 1.25) both;
+}
+
+.victory-overlay .victory-rating i:not(.is-active) {
+  transform: scale(1);
+}
+
+.victory-overlay .victory-rating i:nth-child(1) { animation-delay: .35s; }
+.victory-overlay .victory-rating i:nth-child(2) { animation-delay: .65s; }
+.victory-overlay .victory-rating i:nth-child(3) { animation-delay: .95s; }
+
+.victory-overlay .result-grid {
+  margin: 9px 0 11px;
+}
+
+.victory-overlay .result-grid span {
+  padding-block: 6px;
+}
+
+.victory-overlay .result-grid strong {
+  margin-top: 2px;
+  font-size: 18px;
+}
+
+.victory-overlay .result-card > button {
+  min-width: 170px;
+  padding: 9px 14px;
+}
+
+@keyframes redHeatGlow {
+  from { opacity: .58; }
+  to { opacity: 1; }
+}
+
+@keyframes redHeatNoticeIn {
+  0% { opacity: 0; transform: translateX(-50%) scale(.72) rotate(-2deg); }
+  18%, 76% { opacity: 1; transform: translateX(-50%) scale(1) rotate(-2deg); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-8px) rotate(-2deg); }
+}
+
+@keyframes settlementInventoryArrive {
+  from {
+    opacity: 0;
+    /* 从左上角猫咪栏方向下落并放大到结算区。 */
+    transform: translate(-250%, -230%) rotate(-2deg) scale(.38);
+  }
+}
+
+@keyframes briefingSheetExit {
+  0% { opacity: 1; transform: translateX(0) rotate(-.5deg) scale(1); }
+  16% { transform: translateX(18px) rotate(1deg) scale(1.015); }
+  100% { opacity: 0; transform: translateX(calc(-100% - 48vw)) rotate(-7deg) scale(.94); }
+}
+
+@keyframes briefingBackdropExit {
+  from { background: rgba(45, 36, 31, .48); }
+  to { background: rgba(45, 36, 31, 0); }
+}
+
+@keyframes briefingBattlefieldReveal {
+  from { filter: brightness(.78) saturate(.82); }
+  to { filter: brightness(1) saturate(1); }
+}
+
+@keyframes settlementCatVanish {
+  0%, 55% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(18px) scale(.42); }
+}
+
+@keyframes settlementScoreFloat {
+  0% { opacity: 0; transform: translate(-50%, 12px) scale(.65) rotate(-5deg); }
+  32%, 72% { opacity: 1; transform: translate(-50%, -28px) scale(1) rotate(-5deg); }
+  100% { opacity: 0; transform: translate(-50%, -58px) scale(.94) rotate(-5deg); }
+}
+
+.defeat-overlay .result-card h2 {
+  font-size: clamp(24px, 3.5vw, 42px);
+  line-height: 1.08;
+}
+
+.defeat-overlay .result-card {
+  position: relative;
+  padding-top: 106px;
+  overflow: visible;
+}
+
+.defeat-cat-art {
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  top: 0;
+  width: min(260px, 64%);
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(6px 8px 0 rgba(54, 43, 35, .24));
+  transform: translate(-50%, -50%) rotate(1deg);
+  pointer-events: none;
+  user-select: none;
+}
+
+@keyframes huaBallDropOut {
+  0% { opacity: 1; transform: translate(-50%, -50%) rotate(0) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, 65px) rotate(32deg) scale(.72); }
+}
+
+@keyframes victoryStarLight {
+  0% { color: #aca597; opacity: .75; transform: scale(1) rotate(-16deg); }
+  72% { color: #ffe08a; opacity: 1; transform: scale(1.2) rotate(5deg); }
+  100% { color: #f1c85f; opacity: 1; transform: scale(1) rotate(0); }
 }
 
 @keyframes enemyPartScatter {
@@ -4315,6 +5245,534 @@ html[data-page-transition="fade"]::view-transition-new(game-panel) {
     opacity: 0;
     transform: translate(var(--scatter-x), calc(var(--scatter-y) + 8px)) rotate(var(--scatter-rotation)) scale(.86);
   }
+}
+
+/* 当前版本最终覆盖：放在历史兼容规则之后，避免旧响应式收口覆盖新视觉。 */
+.screen-topbar,
+.screen-topbar > strong,
+.secondary-topbar > strong,
+.back-button,
+.back-button svg { color: #51483f !important; }
+
+.corner-cat-nest {
+  left: -56px;
+  bottom: -31px;
+  width: 158px;
+  height: 174px;
+  transform: rotate(100deg) scaleX(-1);
+}
+
+.corner-treats {
+  right: -49px;
+  bottom: -18px;
+  width: 148px;
+  height: 137px;
+}
+
+.corner-treats img { width: 36px; height: 118px; }
+
+.front-page .menu-secondary-row {
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr);
+}
+
+.front-page .menu-secondary-row > button {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.main-menu-wordmark .game-wordmark span:first-child {
+  background: repeating-linear-gradient(180deg, #d47800 0 4px, transparent 4px 7px);
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+.main-menu-wordmark .game-wordmark span:last-child {
+  background: repeating-linear-gradient(180deg, #006989 0 4px, transparent 4px 7px);
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+.main-menu-wordmark .game-wordmark em,
+.main-menu-hero.is-small .main-menu-wordmark .game-wordmark em {
+  margin-inline: auto;
+  box-shadow: -6px 0 0 rgba(38, 32, 29, .82), 6px 0 0 rgba(38, 32, 29, .82);
+  transform: none;
+}
+
+.main-menu-wordmark .game-wordmark em b {
+  font-style: normal;
+  transform: none;
+}
+
+.main-menu-hero.is-small .main-menu-wordmark .game-wordmark span:first-child {
+  background: #d47800;
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+.main-menu-hero.is-small .main-menu-wordmark .game-wordmark span:last-child {
+  background: #006989;
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+.strength-rank { font-family: inherit !important; }
+.strength-rank > i { font-family: "cn-custom", "Noto Sans SC", sans-serif !important; }
+.catalog-entry-image { transform: translateX(8px); }
+
+.catalog-detail-content { overflow: visible; }
+
+.catalog-detail-stage {
+  width: min(790px, 96%);
+  min-height: min(530px, 94%);
+  display: grid;
+  grid-template-rows: minmax(260px, 1fr) auto;
+  align-items: end;
+  justify-items: center;
+}
+
+.catalog-detail-stage > .catalog-detail-image {
+  z-index: 2;
+  width: calc(100% + 120px);
+  height: 320px;
+  margin-inline: -60px;
+  margin-bottom: -34px;
+  overflow: visible;
+}
+
+.catalog-detail-stage > .catalog-detail-image > img {
+  width: min(330px, 43%);
+  height: 310px;
+}
+
+.catalog-detail-stage > .catalog-detail-image.has-multiple-art.art-count-3 > img { width: min(245px, 29%); }
+.catalog-detail-stage > .catalog-detail-image.has-multiple-art.art-count-5 > img { width: min(155px, 18%); }
+.catalog-detail-stage .catalog-detail-enemy-model { transform: scale(2.45); }
+
+.catalog-detail-stage .catalog-detail-sheet {
+  z-index: 1;
+  width: min(650px, 88%);
+  height: auto;
+  min-height: 205px;
+  padding: 34px 34px 26px;
+  display: block;
+}
+
+.catalog-detail-copy .catalog-lore { color: #70675f; }
+.catalog-detail-copy .catalog-trait,
+.catalog-detail-copy .catalog-trait strong { color: #000; }
+
+.level-rating-stickers { right: 7px; bottom: 38px; }
+
+.chapter-navigation {
+  position: relative;
+  min-height: 100%;
+  display: block;
+  margin-inline: calc(clamp(18px, 3vw, 36px) * -1);
+}
+
+.chapter-viewport {
+  min-height: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  scroll-behavior: auto;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 4%, #000 96%, transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 4%, #000 96%, transparent 100%);
+}
+
+.chapter-switch {
+  position: absolute;
+  z-index: 12;
+  top: 50%;
+  margin-top: 0;
+  transform: translateY(-50%);
+}
+
+.chapter-switch.is-previous { left: 7px; }
+.chapter-switch.is-next { right: 7px; }
+.chapter-switch:hover:not(:disabled) { transform: translateY(calc(-50% - 2px)); }
+.chapter-switch:active:not(:disabled) { transform: translate(3px, calc(-50% + 3px)); }
+
+.level-card.is-locked .level-number { left: -14px; top: 16px; }
+.level-card.is-locked .locked-sleep {
+  min-height: 138px;
+  padding: 0;
+  font-family: "cn-custom", "Noto Sans SC", sans-serif;
+  font-weight: 400;
+  text-align: center;
+}
+
+.briefing-sheet > p {
+  width: min(760px, 94%);
+  margin: 0 auto 13px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(99, 83, 68, .35);
+}
+
+.progress-endpoints { left: -31px; right: -31px; bottom: 7px; }
+.progress-endpoints > img { width: 35px; height: 46px; }
+.progress-enemy-model { width: 55px; height: 74px; transform: scale(.58); }
+
+.hud-level-exit-button svg,
+.victory-overlay .result-secondary-button svg,
+.defeat-overlay .result-secondary-button svg { transform: scaleX(-1); }
+
+.enemy-speed-button {
+  top: -20px;
+  width: 76px;
+  min-width: 76px;
+  height: 48px;
+}
+
+.enemy-speed-button svg { width: 21px; height: 21px; }
+.enemy-speed-button strong { font-size: 17px; }
+
+.defeat-overlay .result-card h2 {
+  font-family: "cn-custom", "Noto Sans SC", sans-serif;
+  font-weight: 400;
+}
+
+.defeat-count,
+.defeat-count strong { font-family: inherit; }
+.defeat-count strong { font-size: 1em; font-weight: 1000; }
+
+.victory-overlay .result-card { top: 30px; }
+.victory-overlay .result-card h2 { font-size: clamp(24px, 3vw, 34px); }
+
+.victory-final-score {
+  margin: 6px auto 8px;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 12px;
+  color: #66584e;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.victory-final-score strong {
+  color: #e23456;
+  font-family: "cn-custom", "Noto Sans SC", sans-serif;
+  font-size: 28px;
+  font-weight: 400;
+}
+
+.victory-overlay .result-grid { grid-template-columns: repeat(3, 1fr); }
+.victory-overlay .result-grid span:first-child strong {
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 18px;
+}
+
+@media (max-width: 720px) {
+  .catalog-detail-stage {
+    width: 100%;
+    grid-template-rows: minmax(190px, 1fr) auto;
+  }
+
+  .catalog-detail-stage > .catalog-detail-image {
+    width: calc(100% + 50px);
+    height: 220px;
+    margin-inline: -25px;
+    margin-bottom: -24px;
+  }
+
+  .catalog-detail-stage > .catalog-detail-image > img { height: 215px; }
+}
+
+/* 2026-08-13 第四轮：背景、章节卷轴、图鉴详情与结算布局收口。 */
+.screen-topbar,
+.screen-topbar > strong,
+.secondary-topbar > strong,
+.back-button,
+.back-button svg {
+  color: #51483f !important;
+}
+
+.corner-cat-nest {
+  left: -56px;
+  bottom: -31px;
+  width: 158px;
+  height: 174px;
+  transform: rotate(100deg) scaleX(-1);
+}
+
+.corner-treats {
+  right: -49px;
+  bottom: -18px;
+  width: 148px;
+  height: 137px;
+}
+
+.corner-treats img {
+  width: 36px;
+  height: 118px;
+}
+
+.front-page .menu-secondary-row {
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr);
+}
+
+
+.front-page .menu-secondary-row > button {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+/* 主菜单标题保留稀疏扫描线；VS 标签本身保持水平、无斜体。 */
+.main-menu-wordmark .game-wordmark span:first-child {
+  background: repeating-linear-gradient(180deg, #d47800 0 4px, transparent 4px 7px);
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+.main-menu-wordmark .game-wordmark span:last-child {
+  background: repeating-linear-gradient(180deg, #006989 0 4px, transparent 4px 7px);
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+.main-menu-wordmark .game-wordmark em {
+  margin-inline: auto;
+  box-shadow:
+    -6px 0 0 rgba(38, 32, 29, .82),
+    6px 0 0 rgba(38, 32, 29, .82);
+  transform: none;
+}
+
+.main-menu-wordmark .game-wordmark em b {
+  font-style: normal;
+  transform: none;
+}
+
+/* 小号标题继续使用实心字，避免缩小时扫描线破坏可读性。 */
+.main-menu-hero.is-small .main-menu-wordmark .game-wordmark span:first-child {
+  background: #d47800;
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+.main-menu-hero.is-small .main-menu-wordmark .game-wordmark span:last-child {
+  background: #006989;
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+/* “强度：”使用正文，只有等级徽章使用 cn-custom。 */
+.strength-rank {
+  font-family: inherit !important;
+}
+
+.strength-rank > i {
+  font-family: "cn-custom", "Noto Sans SC", sans-serif !important;
+}
+
+.catalog-entry-image {
+  transform: translateX(8px);
+}
+
+.catalog-detail-content {
+  overflow: visible;
+}
+
+.catalog-detail-stage {
+  width: min(790px, 96%);
+  min-height: min(530px, 94%);
+  display: grid;
+  grid-template-rows: minmax(260px, 1fr) auto;
+  align-items: end;
+  justify-items: center;
+  gap: 0;
+}
+
+.catalog-detail-stage > .catalog-detail-image {
+  z-index: 2;
+  width: calc(100% + 120px);
+  height: 320px;
+  margin-inline: -60px;
+  margin-bottom: -34px;
+  overflow: visible;
+}
+
+.catalog-detail-stage > .catalog-detail-image > img {
+  width: min(330px, 43%);
+  height: 310px;
+}
+
+.catalog-detail-stage > .catalog-detail-image.has-multiple-art.art-count-3 > img {
+  width: min(245px, 29%);
+}
+
+.catalog-detail-stage > .catalog-detail-image.has-multiple-art.art-count-5 > img {
+  width: min(155px, 18%);
+}
+
+.catalog-detail-stage .catalog-detail-enemy-model {
+  transform: scale(2.45);
+}
+
+.catalog-detail-stage .catalog-detail-sheet {
+  z-index: 1;
+  width: min(650px, 88%);
+  height: auto;
+  min-height: 205px;
+  padding: 34px 34px 26px;
+  display: block;
+}
+
+.catalog-detail-copy .catalog-lore {
+  color: #70675f;
+}
+
+.catalog-detail-copy .catalog-trait,
+.catalog-detail-copy .catalog-trait strong {
+  color: #000;
+}
+
+/* 星星轻压在完成状态标签上方。 */
+.level-rating-stickers {
+  right: 7px;
+  bottom: 24px;
+}
+
+/* 章节视口覆盖整张关卡纸，并在左右边缘做轻微渐隐。 */
+.chapter-navigation {
+  position: relative;
+  min-height: 100%;
+  display: block;
+  margin-inline: calc(clamp(18px, 3vw, 36px) * -1);
+}
+
+.chapter-viewport {
+  min-height: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  scroll-behavior: auto;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 4%, #000 96%, transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 4%, #000 96%, transparent 100%);
+}
+
+.chapter-switch {
+  position: absolute;
+  z-index: 12;
+  top: 50%;
+  margin-top: 0;
+  transform: translateY(-50%);
+}
+
+.chapter-switch.is-previous { left: 7px; }
+.chapter-switch.is-next { right: 7px; }
+
+.chapter-switch:hover:not(:disabled) {
+  transform: translateY(calc(-50% - 2px));
+}
+
+.chapter-switch:active:not(:disabled) {
+  transform: translate(3px, calc(-50% + 3px));
+}
+
+.level-card.is-locked .level-number {
+  left: -29px;
+  top: 0;
+}
+
+.level-card.is-locked .locked-sleep {
+  min-height: 138px;
+  padding: 0;
+  font-family: "cn-custom", "Noto Sans SC", sans-serif;
+  font-weight: 400;
+  text-align: center;
+}
+
+.briefing-sheet > p {
+  width: min(760px, 94%);
+  margin: 0 auto 13px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(99, 83, 68, .35);
+}
+
+.progress-endpoints {
+  left: -31px;
+  right: -31px;
+  bottom: 7px;
+}
+
+.progress-endpoints > img {
+  width: 35px;
+  height: 46px;
+}
+
+.progress-enemy-model {
+  width: 55px;
+  height: 74px;
+  transform: scale(.58);
+}
+
+.hud-level-exit-button svg,
+.victory-overlay .result-secondary-button svg,
+.defeat-overlay .result-secondary-button svg {
+  transform: scaleX(-1);
+}
+
+.enemy-speed-button {
+  top: -20px;
+  width: 76px;
+  min-width: 76px;
+  height: 48px;
+}
+
+.enemy-speed-button svg {
+  width: 21px;
+  height: 21px;
+}
+
+.enemy-speed-button strong {
+  font-size: 17px;
+}
+
+.defeat-overlay .result-card h2 {
+  font-family: "cn-custom", "Noto Sans SC", sans-serif;
+  font-weight: 400;
+}
+
+.defeat-count,
+.defeat-count strong {
+  font-family: inherit;
+}
+
+.defeat-count strong {
+  font-size: 1em;
+  font-weight: 1000;
+}
+
+.victory-overlay .result-card {
+  top: 30px;
+}
+
+.victory-overlay .result-card h2 {
+  font-size: clamp(24px, 3vw, 34px);
+}
+
+.victory-final-score {
+  margin: 6px auto 8px;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 12px;
+  color: #66584e;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.victory-final-score strong {
+  color: #e23456;
+  font-family: "cn-custom", "Noto Sans SC", sans-serif;
+  font-size: 28px;
+  font-weight: 400;
+}
+
+.victory-overlay .result-grid {
+  grid-template-columns: repeat(3, 1fr);
 }
 
 @keyframes enemyDeathDust {
@@ -4338,24 +5796,15 @@ html[data-page-transition="fade"]::view-transition-new(game-panel) {
   width: 50%;
 }
 
-/* 猫咪与敌人列表强制使用同一宽度，避免旧 place-items 令单图敌人网格按内容收缩。 */
-.catalog-page .catalog-list {
-  display: block;
-  place-items: initial;
-}
-
-.catalog-page .catalog-grid {
-  width: 100%;
-  max-width: none;
-}
-
 .external-links a {
   border: 1px solid rgba(111, 97, 82, .5);
   border-radius: 3px;
 }
 
 .producer-profile {
-  margin-top: 9px;
+  width: 100%;
+  margin-top: 0;
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4366,7 +5815,13 @@ html[data-page-transition="fade"]::view-transition-new(game-panel) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  text-align: center;
+}
+
+.about-grid .producer-card h2 {
+  width: 100%;
+  margin-bottom: 0;
   text-align: center;
 }
 
@@ -4418,32 +5873,32 @@ html[data-page-transition="fade"]::view-transition-new(game-panel) {
   cursor: not-allowed;
 }
 
-.sound-control-wrap { position: relative; }
-
-.sound-popover {
-  position: absolute;
-  right: 0;
-  bottom: 49px;
-  width: 190px;
-  padding: 9px;
+.sound-inline-control {
+  height: 40px;
+  padding: 0 9px 0 4px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  border: 1px solid rgba(108, 94, 80, .58);
-  border-radius: 5px;
-  background: #f1e6cf;
-  box-shadow: 4px 5px 0 rgba(77, 65, 54, .18);
-  animation: softRise 180ms ease-out both;
+  gap: 8px;
+  border: 0;
+  background: transparent;
 }
 
 .sound-mute-button {
   width: 32px;
   height: 32px;
   flex: 0 0 32px;
+  border: 0;
+  background: transparent;
   box-shadow: none;
 }
 
-.sound-popover input[type="range"] {
+.sound-mute-button:disabled,
+.sound-inline-control input:disabled {
+  opacity: .35;
+  cursor: not-allowed;
+}
+
+.sound-inline-control input[type="range"] {
   width: 128px;
   height: 5px;
   border-radius: 999px;
@@ -4452,7 +5907,7 @@ html[data-page-transition="fade"]::view-transition-new(game-panel) {
   cursor: pointer;
 }
 
-.sound-popover input[type="range"]::-webkit-slider-thumb {
+.sound-inline-control input[type="range"]::-webkit-slider-thumb {
   width: 15px;
   height: 15px;
   border: 2px solid #5b4e45;
@@ -4537,27 +5992,6 @@ html[data-page-transition="fade"]::view-transition-new(game-panel) {
 .language-switch-button strong { color: #6d1830; }
 .language-switch-button small { color: #81777a; }
 
-.sound-popover {
-  right: auto;
-  left: 50%;
-  top: 44px;
-  bottom: auto;
-  border-width: 2px;
-  border-radius: 2px;
-  transform: translateX(-50%) rotate(-2deg);
-  transform-origin: top center;
-  animation: soundPopoverIn 180ms ease-out both;
-}
-
-.sound-popover .sound-mute-button {
-  border: 0;
-}
-
-@keyframes soundPopoverIn {
-  from { opacity: 0; transform: translate(-50%, -8px) rotate(-2deg); }
-  to { opacity: 1; transform: translate(-50%, 0) rotate(-2deg); }
-}
-
 .level-card.is-completed {
   background:
     repeating-linear-gradient(0deg, transparent 0 21px, rgba(70, 101, 74, .08) 21px 22px),
@@ -4635,9 +6069,9 @@ html[data-page-transition="fade"]::view-transition-new(game-panel) {
   }
 
   .main-menu-wordmark {
-    left: 39%;
+    left: 34.5%;
     top: 48%;
-    width: 220px;
+    width: 380px;
   }
 
   .main-menu-card.paper-card {
@@ -4650,19 +6084,11 @@ html[data-page-transition="fade"]::view-transition-new(game-panel) {
     grid-template-columns: 1fr 1fr;
   }
 
-  .briefing-content {
-    padding: 24px;
-    overflow: hidden;
-  }
-
   .briefing-sheet {
-    width: min(720px, 94%);
+    width: min(920px, calc(100% - 42px));
+    max-width: 920px;
     max-height: 100%;
     padding: 24px 30px;
-  }
-
-  .briefing-types {
-    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   }
 
   .site-utility-area { min-height: 38px; }
@@ -4681,6 +6107,653 @@ html[data-page-transition="fade"]::view-transition-new(game-panel) {
   }
 }
 
+/* 严格限定定制字体范围，禁止影响普通按钮、图鉴个体卡片和游戏内容。 */
+.screen-topbar,
+.main-menu-wordmark,
+.front-page .main-menu-actions button,
+.menu-corner-tabs.is-visible .info-button,
+.level-board h1,
+.bestiary-module > strong,
+.briefing-sheet > h1,
+.red-heat-notice {
+  font-family: "cn-custom", "Noto Sans SC", sans-serif !important;
+}
+
+.changelog-sheet > h1,
+.producer-profile,
+.strength-rank,
+.level-number,
+.completion-label,
+.incomplete-label {
+  font-family: "cn-custom", "Noto Sans SC", sans-serif !important;
+}
+
+/* 2026-08-13 页面排版微调 */
+.screen-topbar {
+  font-size: 15px;
+  font-weight: 400;
+}
+
+.screen-topbar > strong,
+.secondary-topbar > strong {
+  font-size: 30px;
+  font-weight: 400;
+}
+
+.back-button {
+  font-size: 24px !important;
+  font-weight: 400 !important;
+}
+
+.back-button span {
+  font-weight: 400;
+}
+
+/* PC 端品牌标识常驻在游戏容器外部，不再占用 HUD。 */
+.persistent-game-brand {
+  display: none;
+}
+
+@media (min-width: 1001px) {
+  .game-cabinet {
+    height: clamp(520px, calc(100svh - 180px), 820px);
+  }
+
+  .persistent-game-brand {
+    position: relative;
+    z-index: 170;
+    width: 240px;
+    height: 100px;
+    flex: 0 0 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+
+  /* 品牌和底部工具栏高度不同，纸框中心随实际 flex 排版向下校正。 */
+  .persistent-corner-frame,
+  .menu-corner-tabs {
+    top: calc(50% + 29px);
+    width: min(1420px, 97vw);
+    height: clamp(520px, calc(100svh - 180px), 820px);
+  }
+}
+
+/* 小号品牌直接等比缩放大号构图，文字、模型与层级保持同一套视觉比例。 */
+.main-menu-hero.is-small {
+  position: relative;
+  width: 240px;
+  height: 100px;
+  flex: 0 0 240px;
+  overflow: visible;
+}
+
+.main-menu-hero.is-small .small-brand-stage {
+  position: absolute;
+  inset: 0;
+  width: 240px;
+  height: 100px;
+}
+
+.main-menu-hero.is-small .small-brand-stage > .versus-artwork {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  min-height: 0;
+  height: 100%;
+  transform: none;
+}
+
+.main-menu-hero.is-small .small-brand-stage > .main-menu-wordmark {
+  left: 50%;
+  top: 50%;
+  width: 132px;
+}
+
+.main-menu-hero.is-small .versus-artwork:not(.is-compact) .versus-hua {
+  left: 0;
+  bottom: 3px;
+  width: 58px;
+  height: 88px;
+  transform: rotate(-14deg);
+}
+
+.main-menu-hero.is-small .versus-artwork:not(.is-compact) .versus-luca {
+  right: 0;
+  bottom: 1px;
+  transform: scale(.72) rotate(2deg);
+  transform-origin: right bottom;
+}
+
+.main-menu-hero.is-small .main-menu-wordmark .game-wordmark {
+  font-size: 18px;
+  line-height: .88;
+}
+
+.main-menu-hero.is-small .main-menu-wordmark .game-wordmark span {
+  font-size: 2em;
+}
+
+.main-menu-hero.is-small .main-menu-wordmark .game-wordmark em {
+  margin: -1px 0 -2px;
+  font-size: .72em;
+  filter: drop-shadow(0 3px 4px rgba(31, 27, 25, .48));
+}
+
+.main-menu-hero.is-small .versus-hua,
+.main-menu-hero.is-small .versus-luca,
+.main-menu-hero.is-small .enemy-part,
+.main-menu-hero.is-small .enemy-head {
+  animation: none !important;
+}
+
+/* 主菜单按钮统一使用右侧卡片的完整宽度。 */
+.front-page .main-menu-actions {
+  width: 100%;
+  transform: translateY(34px) scale(1.16);
+}
+
+.front-page .main-menu-actions > .primary-button,
+.front-page .menu-secondary-row {
+  width: 100%;
+  max-width: none;
+}
+
+.main-menu-wordmark .game-wordmark {
+  filter: saturate(1.08) contrast(1.14);
+}
+
+.main-menu-wordmark .game-wordmark span:first-child {
+  background: repeating-linear-gradient(
+    180deg,
+    #c28b1f 0 2.5px,
+    transparent 2.5px 5px
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+.main-menu-wordmark .game-wordmark span:last-child {
+  background: repeating-linear-gradient(
+    180deg,
+    #287c9e 0 2.5px,
+    transparent 2.5px 5px
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+.main-menu-wordmark .game-wordmark em {
+  background: repeating-linear-gradient(
+    180deg,
+    #e23456 0 2.5px,
+    transparent 2.5px 5px
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-stroke: 0;
+}
+
+.about-page .info-sheet > .main-menu-hero.is-small {
+  margin: 0 auto 24px;
+}
+
+.producer-profile {
+  font-size: 20px;
+}
+
+.producer-profile p {
+  font-size: 20px;
+  font-weight: 400;
+}
+
+/* 图鉴列表留出纸张边距，并统一个体卡片的内部对齐。 */
+.catalog-list {
+  padding: 18px 40px 24px;
+}
+
+.catalog-grid {
+  gap: 18px 20px;
+}
+
+.catalog-entry {
+  grid-template-columns: 78px minmax(0, 1fr);
+  gap: 18px;
+  padding: 12px;
+  text-align: center;
+}
+
+.catalog-entry-image {
+  width: 78px;
+  height: 98px;
+}
+
+.catalog-entry > div:last-child {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.catalog-lore {
+  font-style: italic;
+}
+
+.catalog-entry .strength-rank {
+  margin-left: 9px;
+}
+
+.cat-catalog-properties,
+.enemy-catalog-properties {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: nowrap;
+  gap: 12px;
+}
+
+.catalog-detail-copy .cat-catalog-properties,
+.catalog-detail-copy .enemy-catalog-properties {
+  width: max-content;
+  margin-inline: auto;
+  gap: 12px;
+}
+
+.catalog-detail-sheet {
+  border: 0 !important;
+}
+
+.catalog-detail-image.has-multiple-art {
+  flex-wrap: wrap;
+}
+
+.catalog-detail-image.has-multiple-art.art-count-3 > img {
+  width: min(170px, 30%);
+}
+
+.catalog-detail-image.has-multiple-art.art-count-5 > img {
+  width: min(112px, 18%);
+}
+
+.level-board-title > h1 {
+  margin-top: 0;
+}
+
+.level-number,
+.level-card .completion-label,
+.level-card .incomplete-label {
+  font-weight: 400;
+}
+
+/* 2026-08-13 第二轮页面与战斗细节 */
+.loading-page::before {
+  display: none;
+}
+
+.screen-topbar,
+.screen-topbar > strong,
+.secondary-topbar > strong,
+.back-button,
+.back-button svg {
+  color: #a49784 !important;
+}
+
+.corner-cat-nest {
+  position: absolute;
+  left: -36px;
+  bottom: -18px;
+  width: 112px;
+  height: 132px;
+  object-fit: contain;
+  transform: rotate(10deg);
+}
+
+.corner-treats {
+  position: absolute;
+  right: -31px;
+  bottom: -9px;
+  width: 112px;
+  height: 104px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0;
+  transform: rotate(-12deg);
+}
+
+.corner-treats img {
+  width: 25px;
+  height: 88px;
+  object-fit: contain;
+  filter: drop-shadow(2px 3px 0 rgba(55, 43, 35, .25));
+}
+
+.corner-treats img:nth-child(1) { transform: rotate(-9deg) translateY(8px); }
+.corner-treats img:nth-child(2) { transform: translateY(-3px); }
+.corner-treats img:nth-child(3) { transform: rotate(9deg) translateY(7px); }
+
+.persistent-game-brand {
+  opacity: 0;
+  transform: translateY(-15px);
+  transition: opacity 260ms ease, transform 280ms ease;
+}
+
+.persistent-game-brand.is-visible {
+  opacity: 1;
+  transform: translateY(-8px);
+}
+
+.persistent-game-brand.is-hidden {
+  opacity: 0;
+  transform: translateY(-18px);
+}
+
+/* 大号扫描线减少一半密度并加深色彩。 */
+.main-menu-wordmark .game-wordmark span:first-child {
+  background: repeating-linear-gradient(180deg, #a96c06 0 4px, transparent 4px 8px);
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+.main-menu-wordmark .game-wordmark span:last-child {
+  background: repeating-linear-gradient(180deg, #075d80 0 4px, transparent 4px 8px);
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+.main-menu-wordmark .game-wordmark em {
+  min-width: 1.8em;
+  margin-inline: auto;
+  padding: .08em .28em .12em;
+  color: #fff4e4;
+  background: #e23456;
+  background-clip: border-box;
+  -webkit-background-clip: border-box;
+  -webkit-text-fill-color: currentColor;
+  border-radius: 2px;
+  box-shadow: 3px 4px 0 rgba(53, 42, 37, .24);
+  filter: none;
+  text-align: center;
+  text-shadow: none;
+}
+
+.front-page .versus-artwork:not(.is-compact) .versus-hua {
+  bottom: 1%;
+}
+
+.front-page .versus-artwork:not(.is-compact) .versus-luca {
+  bottom: 2%;
+}
+
+/* 小号标题使用实色字形，保留两组文字原有的梯形矩阵。 */
+.main-menu-hero.is-small .main-menu-wordmark .game-wordmark {
+  font-size: 22px;
+  filter: saturate(1.18) contrast(1.18);
+}
+
+.main-menu-hero.is-small .main-menu-wordmark .game-wordmark span:first-child {
+  background: #a96c06;
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+.main-menu-hero.is-small .main-menu-wordmark .game-wordmark span:last-child {
+  background: #075d80;
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+.main-menu-hero.is-small .versus-artwork:not(.is-compact) .versus-hua {
+  left: 18px;
+  bottom: 10px;
+}
+
+.main-menu-hero.is-small .versus-artwork:not(.is-compact) .versus-luca {
+  right: 17px;
+  bottom: -5px;
+}
+
+/* 主菜单按钮模块恢复紧凑宽度，同时三个按钮都提供明确按压反馈。 */
+.front-page .main-menu-actions {
+  width: min(360px, 82%);
+  margin-inline: auto;
+}
+
+.front-page .main-menu-actions button:active {
+  transform: translate(3px, 3px) rotate(-1deg);
+  box-shadow: 1px 1px 0 rgba(76, 52, 47, .54);
+}
+
+.menu-corner-tabs .info-button,
+.menu-corner-tabs .info-button::before {
+  border-width: 2px;
+}
+
+.briefing-type-category > h2 {
+  text-align: center;
+}
+
+.briefing-types .briefing-score-note.is-placeholder {
+  visibility: hidden;
+}
+
+.briefing-close-button svg,
+.pause-exit-button svg {
+  transform: scaleX(-1);
+}
+
+.confirm-dialog-card {
+  max-width: 520px;
+}
+
+.confirm-dialog-card h2 {
+  white-space: nowrap;
+  font-family: "cn-custom", "Noto Sans SC", sans-serif;
+  font-size: clamp(18px, 2.45vw, 30px);
+  font-weight: 400;
+  letter-spacing: -.04em;
+}
+
+.pause-message h2,
+.victory-overlay .result-card h2 {
+  font-family: "cn-custom", "Noto Sans SC", sans-serif;
+  font-weight: 400;
+}
+
+.progress-endpoints {
+  position: absolute;
+  z-index: 5;
+  left: 20px;
+  right: 20px;
+  top: 25px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.progress-endpoints > img {
+  width: 35px;
+  height: 44px;
+  object-fit: contain;
+  transform: rotate(-9deg);
+}
+
+.progress-enemy-model {
+  position: relative;
+  width: 40px;
+  height: 55px;
+  transform: scale(.65);
+  transform-origin: right bottom;
+}
+
+.progress-enemy-model .enemy-part,
+.progress-enemy-model .enemy-head {
+  animation: none !important;
+}
+
+.level-progress {
+  position: relative;
+}
+
+.level-copy {
+  position: relative;
+  justify-content: center;
+}
+
+.level-copy strong {
+  position: absolute;
+  right: 0;
+}
+
+.progress-track {
+  margin-inline: 50px;
+}
+
+.progress-cat {
+  top: -21px;
+  padding: 2px 5px;
+  border-radius: 2px;
+  color: #fff3e3;
+  background: #e23456;
+}
+
+.enemy-speed-button {
+  top: -12px;
+  width: 93px;
+  min-width: 93px;
+  height: 57px;
+  transform: rotate(-2deg);
+}
+
+.enemy-speed-button svg {
+  width: 26px;
+  height: 26px;
+}
+
+.enemy-speed-button strong {
+  font-size: 20px;
+}
+
+.enemy-speed-button:hover:not(:disabled) {
+  transform: translateY(-2px) rotate(-2deg);
+}
+
+.enemy-speed-button:active:not(:disabled) {
+  transform: translate(2px, 2px) rotate(-2deg);
+}
+
+.settlement-inventory-card {
+  min-height: 220px;
+}
+
+.defeat-overlay .result-card {
+  top: 54px;
+}
+
+.defeat-cat-art {
+  /* 嘻嘻猫略微下移，避免与弹窗顶部脱节。 */
+  transform: translate(-50%, -68%) rotate(1deg);
+}
+
+.defeat-count {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .45em;
+  text-align: center;
+}
+
+.defeat-count strong {
+  font-family: "cn-custom", "Noto Sans SC", sans-serif;
+  font-size: 1.35em;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.victory-overlay .victory-rating i:nth-child(1) { rotate: -9deg; }
+.victory-overlay .victory-rating i:nth-child(3) { rotate: 9deg; }
+
+.victory-overlay .result-grid span:first-child strong {
+  color: #e23456;
+  font-family: "cn-custom", "Noto Sans SC", sans-serif;
+  font-size: 25px;
+}
+
+/* 关卡章节使用裁切视口与整块位移动画，不使用淡入或缩放。 */
+.chapter-navigation {
+  min-height: 100%;
+  display: grid;
+  grid-template-columns: 50px minmax(0, 1fr) 50px;
+  align-items: center;
+  gap: 12px;
+}
+
+.chapter-viewport {
+  min-height: 100%;
+  overflow-x: clip;
+  overflow-y: visible;
+}
+
+.chapter-track {
+  width: calc(100% * 2);
+  min-height: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  transform: translateX(calc(var(--chapter-index) * -50%));
+  transition: transform 360ms cubic-bezier(.22, .72, .24, 1);
+  will-change: transform;
+}
+
+.chapter-slide {
+  width: 100%;
+  min-height: 100%;
+  padding-top: 0;
+}
+
+.chapter-switch {
+  width: 46px;
+  height: 74px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  color: #77695d;
+  background: transparent;
+  font-size: 38px;
+  cursor: pointer;
+  transition: transform 120ms ease, color 120ms ease, opacity 120ms ease;
+}
+
+.chapter-switch:hover:not(:disabled) {
+  color: #e23456;
+  transform: translateX(var(--chapter-nudge));
+}
+
+.chapter-switch.is-previous { --chapter-nudge: -4px; }
+.chapter-switch.is-next { --chapter-nudge: 4px; }
+.chapter-switch:disabled { opacity: .18; cursor: default; }
+
+@media (min-width: 1001px) {
+  .persistent-game-brand {
+    height: 74px;
+    flex-basis: 74px;
+  }
+}
+
+.level-number {
+  font-family: "Courier New", "Noto Sans SC", monospace !important;
+  font-weight: 1000;
+}
+
+.level-card .completion-label,
+.level-card .incomplete-label {
+  font-size: 19px;
+  line-height: .84;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -4689,5 +6762,1243 @@ html[data-page-transition="fade"]::view-transition-new(game-panel) {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* 2026-08-13 第三轮：品牌、原生章节卷轴与战斗 HUD 对位。 */
+.screen-topbar,
+.screen-topbar > strong,
+.secondary-topbar > strong,
+.back-button,
+.back-button svg {
+  color: #746757 !important;
+}
+
+.back-button:active {
+  transform: translate(3px, 3px) rotate(-3deg) !important;
+  box-shadow: 1px 1px 0 rgba(103, 88, 72, .2) !important;
+}
+
+.corner-cat-nest {
+  left: -37px;
+  bottom: -25px;
+  width: 136px;
+  height: 150px;
+  transform: rotate(100deg);
+}
+
+.corner-treats {
+  right: -45px;
+  bottom: -15px;
+  width: 132px;
+  height: 121px;
+}
+
+.corner-treats img {
+  width: 31px;
+  height: 104px;
+}
+
+.persistent-game-brand.is-visible {
+  transform: translateY(-2px);
+}
+
+/* 文字扫描线更密实：实色段增高、透明镂空缩短，并使用白色位移阴影。 */
+.main-menu-wordmark .game-wordmark {
+  filter: saturate(1.42) contrast(1.2);
+}
+
+.main-menu-wordmark .game-wordmark span,
+.main-menu-wordmark .game-wordmark em {
+  filter: drop-shadow(4px 5px 0 rgba(255, 255, 255, .92));
+}
+
+.main-menu-wordmark .game-wordmark span:first-child {
+  background: repeating-linear-gradient(180deg, #a96a00 0 4px, transparent 4px 5px);
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+.main-menu-wordmark .game-wordmark span:last-child {
+  background: repeating-linear-gradient(180deg, #006989 0 4px, transparent 4px 5px);
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+.main-menu-wordmark .game-wordmark em {
+  display: block;
+  min-width: 1.8em;
+  margin-inline: auto;
+  padding: .08em .28em .12em;
+  color: #fff4e4;
+  background: #e23456;
+  background-clip: border-box;
+  -webkit-background-clip: border-box;
+  -webkit-text-fill-color: currentColor;
+  border-radius: 2px;
+  box-shadow: 3px 4px 0 rgba(255, 255, 255, .86);
+  filter: none;
+  transform: rotate(4deg);
+}
+
+.main-menu-wordmark .game-wordmark em b {
+  display: inline-block;
+  font-weight: inherit;
+  font-style: italic;
+  transform: skewX(-10deg);
+}
+
+.versus-hua,
+.versus-luca {
+  cursor: pointer;
+  will-change: transform;
+}
+
+.main-menu-hero.is-small .versus-artwork:not(.is-compact) .versus-hua,
+.main-menu-hero.is-small .versus-artwork:not(.is-compact) .versus-luca {
+  bottom: 2px;
+}
+
+.main-menu-hero.is-small .main-menu-wordmark .game-wordmark span {
+  color: transparent;
+  filter: drop-shadow(2px 3px 0 rgba(255, 255, 255, .92));
+}
+
+.main-menu-hero.is-small .main-menu-wordmark .game-wordmark em {
+  box-shadow: 2px 2px 0 rgba(255, 255, 255, .9);
+}
+
+.front-page .main-menu-actions {
+  width: min(320px, 76%);
+}
+
+.front-page .main-menu-actions > .primary-button {
+  font-size: 26px;
+}
+
+.front-page .main-menu-actions .menu-secondary-button {
+  font-size: 20px;
+}
+
+.about-page .info-sheet > .main-menu-hero.is-small {
+  margin-bottom: 32px;
+  transform: scale(1.22);
+  transform-origin: center center;
+  animation: aboutBrandReveal 400ms 80ms ease-out both;
+}
+
+/* 关于页单独校正小品牌：全局小号品牌以底边锚定，放大后角色和版本签会向下溢出。 */
+.about-page .info-sheet > .main-menu-hero.is-small .small-brand-stage > .versus-artwork {
+  transform: translateY(-13px);
+}
+
+.about-page .info-sheet > .main-menu-hero.is-small .game-brand-demo {
+  top: calc(100% - 27px);
+}
+
+@keyframes aboutBrandReveal {
+  from { opacity: 0; transform: scale(1.05); }
+  to { opacity: 1; transform: scale(1.22); }
+}
+
+.confirm-dialog-card h2 {
+  font-size: clamp(25px, 3vw, 36px);
+}
+
+.briefing-start {
+  font-family: "cn-custom", "Noto Sans SC", sans-serif !important;
+  font-size: 24px;
+  font-weight: 400;
+}
+
+.pause-exit-button {
+  width: 61px;
+  height: 48px;
+}
+
+.pause-exit-button svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* 进度条端点直接挂在轨道坐标系内，底部被轨道遮挡。 */
+.level-copy {
+  margin-bottom: 17px;
+  justify-content: center;
+}
+
+.progress-track-wrap {
+  position: relative;
+  margin-inline: 50px;
+}
+
+.progress-endpoints {
+  z-index: 0;
+  left: 18px;
+  right: 18px;
+  top: auto;
+  bottom: 8px;
+}
+
+.progress-endpoints > img {
+  width: 46px;
+  height: 59px;
+  transform: rotate(-7deg);
+}
+
+.progress-enemy-model {
+  width: 72px;
+  height: 96px;
+  transform: scale(.76);
+}
+
+.progress-track {
+  z-index: 2;
+  margin-inline: 0;
+}
+
+.progress-percentage {
+  display: block;
+  margin-top: 5px;
+  color: var(--red-dark);
+  font-size: 12px;
+  line-height: 1;
+  text-align: center;
+}
+
+.progress-cat {
+  padding: 0;
+  color: #e23456;
+  background: transparent;
+}
+
+/* 原生横向滚动轨道：两个章节始终并排存在，按钮只驱动 scrollLeft。 */
+.chapter-navigation {
+  grid-template-columns: 58px minmax(0, 1fr) 58px;
+  align-items: start;
+  gap: 8px;
+}
+
+.chapter-viewport {
+  min-height: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  scroll-behavior: smooth;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+
+.chapter-viewport::-webkit-scrollbar { display: none; }
+
+.chapter-track {
+  width: calc(100% * 2);
+  transform: none;
+  transition: none;
+  will-change: auto;
+}
+
+.chapter-slide {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+.chapter-switch {
+  width: 54px;
+  height: 70px;
+  color: #dfd3be;
+  font-size: 45px;
+  line-height: 1;
+  text-shadow: 4px 5px 0 rgba(71, 60, 50, .32);
+  margin-top: 150px;
+  transition: transform 110ms ease, text-shadow 110ms ease, opacity 110ms ease;
+}
+
+.chapter-switch:hover:not(:disabled) {
+  color: #dfd3be;
+  transform: translateY(-2px);
+}
+
+.chapter-switch:active:not(:disabled) {
+  transform: translate(3px, 3px);
+  text-shadow: 1px 1px 0 rgba(71, 60, 50, .32);
+}
+
+.chapter-switch:disabled { opacity: .28; }
+
+.level-board-title small {
+  font-size: 13px;
+  letter-spacing: 0;
+}
+
+.level-card.is-locked {
+  position: relative;
+  display: block;
+  padding: 20px 20px 52px;
+}
+
+.level-card.is-locked .level-number {
+  position: absolute;
+  left: 14px;
+  top: 20px;
+}
+
+.level-card.is-locked .locked-sleep {
+  min-height: 118px;
+  display: grid;
+  place-items: center;
+  padding-top: 36px;
+}
+
+/* 地面停留阶段减半，散落位移保持原速度。 */
+@keyframes enemyPartScatter {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0deg) scale(1);
+  }
+  88% {
+    opacity: 1;
+    transform: translate(var(--scatter-x), var(--scatter-y)) rotate(var(--scatter-rotation)) scale(.98);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--scatter-x), calc(var(--scatter-y) + 8px)) rotate(var(--scatter-rotation)) scale(.86);
+  }
+}
+
+/* 本轮最终覆盖层。 */
+.screen-topbar,
+.screen-topbar > strong,
+.secondary-topbar > strong,
+.back-button,
+.back-button svg { color: #51483f !important; }
+
+.corner-cat-nest {
+  left: -56px;
+  bottom: -31px;
+  width: 158px;
+  height: 174px;
+  transform: rotate(100deg) scaleX(-1);
+}
+
+.corner-treats { right: -49px; bottom: -18px; width: 148px; height: 137px; }
+.corner-treats img { width: 36px; height: 118px; }
+
+.front-page .menu-secondary-row { grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); }
+.front-page .menu-secondary-row > button { min-width: 0; white-space: nowrap; }
+
+.main-menu-wordmark .game-wordmark span:first-child {
+  background: repeating-linear-gradient(180deg, #d47800 0 4px, transparent 4px 7px);
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+.main-menu-wordmark .game-wordmark span:last-child {
+  background: repeating-linear-gradient(180deg, #006989 0 4px, transparent 4px 7px);
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+.main-menu-wordmark .game-wordmark em,
+.main-menu-hero.is-small .main-menu-wordmark .game-wordmark em {
+  margin-inline: auto;
+  box-shadow: -6px 0 0 rgba(38, 32, 29, .82), 6px 0 0 rgba(38, 32, 29, .82);
+  transform: none;
+}
+
+.main-menu-wordmark .game-wordmark em b {
+  font-style: normal;
+  transform: none;
+}
+
+.main-menu-hero.is-small .main-menu-wordmark .game-wordmark span:first-child {
+  background: #d47800;
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+.main-menu-hero.is-small .main-menu-wordmark .game-wordmark span:last-child {
+  background: #006989;
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+.strength-rank { font-family: inherit !important; }
+.strength-rank > i { font-family: "cn-custom", "Noto Sans SC", sans-serif !important; }
+.catalog-entry-image { transform: translateX(8px); }
+.catalog-detail-content { overflow: visible; }
+
+.catalog-detail-stage {
+  width: min(790px, 96%);
+  min-height: min(530px, 94%);
+  display: grid;
+  grid-template-rows: minmax(260px, 1fr) auto;
+  align-items: end;
+  justify-items: center;
+}
+
+.catalog-detail-stage > .catalog-detail-image {
+  z-index: 2;
+  width: calc(100% + 120px);
+  height: 320px;
+  margin-inline: -60px;
+  margin-bottom: -34px;
+  overflow: visible;
+}
+
+.catalog-detail-stage > .catalog-detail-image > img { width: min(330px, 43%); height: 310px; }
+.catalog-detail-stage > .catalog-detail-image.has-multiple-art.art-count-3 > img { width: min(245px, 29%); }
+.catalog-detail-stage > .catalog-detail-image.has-multiple-art.art-count-5 > img { width: min(155px, 18%); }
+.catalog-detail-stage .catalog-detail-enemy-model { transform: scale(2.45); }
+
+.catalog-detail-stage .catalog-detail-sheet {
+  z-index: 1;
+  width: min(650px, 88%);
+  height: auto;
+  min-height: 205px;
+  padding: 34px 34px 26px;
+  display: block;
+}
+
+.catalog-detail-copy .catalog-lore { color: #70675f; }
+.catalog-detail-copy .catalog-trait,
+.catalog-detail-copy .catalog-trait strong { color: #000; }
+
+.level-rating-stickers { right: 7px; bottom: 24px; }
+
+.chapter-navigation {
+  position: relative;
+  min-height: 100%;
+  display: block;
+  margin-inline: calc(clamp(18px, 3vw, 36px) * -1);
+}
+
+.chapter-viewport {
+  min-height: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  scroll-behavior: auto;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 4%, #000 96%, transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 4%, #000 96%, transparent 100%);
+}
+
+.chapter-switch {
+  position: absolute;
+  z-index: 12;
+  top: 50%;
+  margin-top: 0;
+  transform: translateY(-50%);
+}
+
+.chapter-switch.is-previous { left: 7px; }
+.chapter-switch.is-next { right: 7px; }
+.chapter-switch:hover:not(:disabled) { transform: translateY(calc(-50% - 2px)); }
+.chapter-switch:active:not(:disabled) { transform: translate(3px, calc(-50% + 3px)); }
+
+.level-card.is-locked .level-number { left: -29px; top: 0; }
+.level-card.is-locked .locked-sleep {
+  min-height: 138px;
+  padding: 0;
+  font-family: "cn-custom", "Noto Sans SC", sans-serif;
+  font-weight: 400;
+  text-align: center;
+}
+
+.briefing-sheet > p {
+  width: min(760px, 94%);
+  margin: 0 auto 13px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(99, 83, 68, .35);
+}
+
+.progress-endpoints { left: -31px; right: -31px; bottom: 7px; }
+.progress-endpoints > img { width: 35px; height: 46px; }
+.progress-enemy-model { width: 55px; height: 74px; transform: scale(.58); }
+
+.hud-level-exit-button svg,
+.victory-overlay .result-secondary-button svg,
+.defeat-overlay .result-secondary-button svg { transform: scaleX(-1); }
+
+.enemy-speed-button { top: -20px; width: 76px; min-width: 76px; height: 48px; }
+.enemy-speed-button svg { width: 21px; height: 21px; }
+.enemy-speed-button strong { font-size: 17px; }
+
+.defeat-overlay .result-card h2 {
+  font-family: "cn-custom", "Noto Sans SC", sans-serif;
+  font-weight: 400;
+}
+
+.defeat-count,
+.defeat-count strong { font-family: inherit; }
+.defeat-count strong { font-size: 1em; font-weight: 1000; }
+
+.victory-overlay .result-card { top: 30px; }
+.victory-overlay .result-card h2 { font-size: clamp(24px, 3vw, 34px); }
+
+.victory-final-score {
+  margin: 6px auto 8px;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 12px;
+  color: #66584e;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.victory-final-score strong {
+  color: #e23456;
+  font-family: "cn-custom", "Noto Sans SC", sans-serif;
+  font-size: 28px;
+  font-weight: 400;
+}
+
+.victory-overlay .result-grid { grid-template-columns: repeat(3, 1fr); }
+.victory-overlay .result-grid span:first-child strong { color: var(--ink); font-family: inherit; font-size: 18px; }
+
+@media (max-width: 720px) {
+  .catalog-detail-stage { width: 100%; grid-template-rows: minmax(190px, 1fr) auto; }
+  .catalog-detail-stage > .catalog-detail-image {
+    width: calc(100% + 50px);
+    height: 220px;
+    margin-inline: -25px;
+    margin-bottom: -24px;
+  }
+  .catalog-detail-stage > .catalog-detail-image > img { height: 215px; }
+}
+
+.level-rating-stickers { bottom: 38px; }
+.level-card.is-locked .level-number { left: -14px; top: 16px; }
+
+/* 2026-08-13：品牌标题、图鉴详情、战斗进度端点与常驻角落素材的最终视觉收口。 */
+.main-menu-hero.is-large .main-menu-wordmark .game-wordmark span {
+  font-size: 2.12em;
+}
+
+/* 大尺寸标题的透明扫描线：频率减半，同时将每条透明线压缩至原高度的一半。 */
+.main-menu-hero.is-large .main-menu-wordmark .game-wordmark span:first-child {
+  background: repeating-linear-gradient(180deg, #d47800 0 12.5px, transparent 12.5px 14px);
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+.main-menu-hero.is-large .main-menu-wordmark .game-wordmark span:last-child {
+  background: repeating-linear-gradient(180deg, #006989 0 12.5px, transparent 12.5px 14px);
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+.main-menu-wordmark .game-wordmark em,
+.main-menu-hero.is-small .main-menu-wordmark .game-wordmark em {
+  background: #ec6f86;
+  border-radius: 0;
+  box-shadow: -6px 0 0 rgba(38, 32, 29, .41), 6px 0 0 rgba(38, 32, 29, .41);
+}
+
+.main-menu-hero.is-small .versus-artwork:not(.is-compact) .versus-luca {
+  translate: -7px 0;
+}
+
+.catalog-detail-stage .catalog-detail-sheet {
+  margin-top: 10px;
+  padding-block: 20px 16px;
+}
+
+/* 进度条两端统一使用等尺寸角色头像，不再渲染完整路卡模型。 */
+.progress-endpoints > .progress-endpoint-hua,
+.progress-endpoints > .progress-endpoint-enemy {
+  width: 46px;
+  height: 56px;
+  flex: 0 0 46px;
+}
+
+.progress-endpoints > .progress-endpoint-hua {
+  object-fit: contain;
+  transform: rotate(-7deg);
+}
+
+.progress-endpoints > .progress-endpoint-enemy {
+  transform: rotate(4deg);
+}
+
+/* 猫条移至左侧、猫窝移至右侧，并让两组素材继续向容器外延伸。 */
+.corner-cat-nest {
+  left: auto;
+  right: -76px;
+  bottom: -39px;
+  width: 184px;
+  height: 203px;
+  transform: rotate(-100deg) scaleX(-1);
+}
+
+.corner-treats {
+  left: -67px;
+  right: auto;
+  bottom: -25px;
+  width: 174px;
+  height: 159px;
+}
+
+.corner-treats img {
+  width: 42px;
+  height: 137px;
+}
+
+/* 章节切换只使用轨道位移，避免原生滚动吸附吞掉按钮触发的过渡帧。 */
+.chapter-viewport {
+  overflow-x: clip;
+  overflow-y: visible;
+  scroll-behavior: auto;
+  scroll-snap-type: none;
+}
+
+.chapter-track {
+  width: calc(100% * var(--chapter-count));
+  display: grid;
+  grid-template-columns: repeat(var(--chapter-count), minmax(0, 1fr));
+  transform: translate3d(var(--chapter-offset), 0, 0);
+  transition: transform 420ms cubic-bezier(.22, .72, .24, 1);
+  will-change: transform;
+}
+
+.chapter-slide {
+  scroll-snap-align: none;
+}
+
+/* 悬浮名称属于猫咪按钮的层叠上下文，需要连同按钮一起提升到其他猫咪之上。 */
+.cat-inventory-card:hover,
+.cat-inventory-card:focus-visible {
+  z-index: 20;
+}
+
+.cat-inventory-card:hover .cat-name-tooltip,
+.cat-inventory-card:focus-visible .cat-name-tooltip {
+  z-index: 21;
+}
+
+/* “敌人没招了”只保留文字，不显示深色提示底板。 */
+.red-heat-notice.is-ended {
+  background: transparent;
+  box-shadow: none;
+}
+
+/* 通关章向卡片右侧靠近，失败章位置保持不变。 */
+.victory-overlay .result-stamp {
+  right: 10px;
+}
+
+/* 隐藏关锁定时使用独立的暗色虚线纸卡，解锁后恢复正常关卡交互。 */
+.level-card.is-hidden-level.is-locked {
+  border-style: dashed;
+  background: rgba(80, 72, 65, .12);
+}
+
+.level-card.is-hidden-level.is-locked .level-number {
+  color: #756b62;
+}
+
+.level-card.is-hidden-level.is-locked .locked-sleep {
+  max-width: 190px;
+  color: #756b62;
+  font-size: 15px;
+}
+
+.level-card.is-hidden-unlocked {
+  border-style: dashed;
+}
+
+/* 大尺寸品牌标题继续放大并向 VS 收拢；VS 层级更高，会轻微压住两组文字。 */
+.main-menu-hero.is-large .main-menu-wordmark .game-wordmark span {
+  font-size: 2.28em;
+}
+
+.main-menu-hero.is-large .main-menu-wordmark .game-wordmark span:first-child {
+  top: 16px;
+}
+
+.main-menu-hero.is-large .main-menu-wordmark .game-wordmark span:last-child {
+  top: -16px;
+}
+
+.main-menu-hero.is-large .main-menu-wordmark .game-wordmark em {
+  z-index: 4;
+  margin-block: -12px -13px;
+}
+
+/* 进度条两端角色置于轨道、填充和红温区间之上。 */
+.progress-endpoints {
+  z-index: 4;
+}
+
+.progress-endpoints > .progress-endpoint-hua,
+.progress-endpoints > .progress-endpoint-enemy {
+  position: relative;
+  z-index: 5;
+}
+
+/* 选关页底部章节索引由章节配置自动生成，并复用现有轨道翻页动画。 */
+.chapter-quick-select {
+  position: relative;
+  z-index: 14;
+  flex: 0 0 auto;
+  min-height: 54px;
+  padding: 8px 120px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 9px;
+  border-top: 2px dashed rgba(81, 72, 63, .34);
+  background: rgba(232, 219, 190, .78);
+}
+
+.chapter-quick-select button {
+  min-width: 88px;
+  padding: 7px 14px;
+  border: 1px dashed rgba(81, 72, 63, .48);
+  border-radius: 0;
+  color: #6e6257;
+  background: rgba(245, 236, 215, .68);
+  box-shadow: 2px 3px 0 rgba(66, 55, 47, .14);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+  transform: rotate(-1deg);
+  transition: color 140ms ease, background 140ms ease, transform 140ms ease, box-shadow 140ms ease;
+}
+
+.chapter-quick-select button:nth-child(even) {
+  transform: rotate(1deg);
+}
+
+.chapter-quick-select button:hover {
+  color: #51483f;
+  transform: translateY(-2px) rotate(-3deg);
+  box-shadow: 4px 5px 0 rgba(66, 55, 47, .18);
+}
+
+.chapter-quick-select button.is-active {
+  color: #fff2dc;
+  background: #e23456;
+  border-color: rgba(81, 36, 43, .66);
+  transform: translateY(-2px) rotate(-2deg);
+}
+
+.chapter-quick-select button:active {
+  transform: translate(2px, 1px) rotate(1deg);
+  box-shadow: 1px 1px 0 rgba(66, 55, 47, .14);
+}
+
+/* 仅放大主菜单的大尺寸花花模型，小尺寸品牌和战斗素材保持原尺寸。 */
+.front-page .main-menu-hero.is-large .versus-artwork:not(.is-compact) .versus-hua {
+  left: 1%;
+  bottom: -2%;
+  width: 49%;
+  height: 92%;
+}
+
+/* 小尺寸品牌中的路卡单独缩小并上移，不影响大尺寸主菜单模型。 */
+.main-menu-hero.is-small .versus-artwork:not(.is-compact) .versus-luca {
+  bottom: 8px;
+  transform: scale(.64) rotate(2deg);
+  translate: -7px 0;
+}
+
+/* 关于页相关链接中的 Anutrium Logo 使用轻微圆角。 */
+.about-page .external-links img {
+  border-radius: 4px;
+}
+
+/* 红温进入提示移除底板，使用浅色描边阴影和深色位移阴影保持可读性。 */
+.red-heat-notice.is-entered {
+  background: transparent;
+  box-shadow: none;
+  text-shadow:
+    2px 0 #f4e6cd,
+    -2px 0 #f4e6cd,
+    0 2px #f4e6cd,
+    0 -2px #f4e6cd,
+    5px 6px 0 rgba(58, 39, 34, .38);
+}
+
+/* 隐藏关锁定说明占满卡片内容区并垂直居中。 */
+.level-card.is-hidden-level.is-locked .locked-sleep {
+  width: 100%;
+  max-width: 230px;
+  min-height: 100%;
+  padding: 0 12px;
+  display: grid;
+  place-items: center;
+  font-size: 19px;
+  line-height: 1.45;
+}
+
+/* 右下角猫窝切换水平朝向，并略微向容器外下移。 */
+.corner-cat-nest {
+  bottom: -47px;
+  transform: rotate(-100deg) scaleX(1);
+}
+
+/* 百分比使用定制字体并向 HUD 下缘溢出；左侧花花端点单独下移。 */
+.progress-percentage {
+  position: relative;
+  z-index: 6;
+  margin-top: 5px;
+  font-family: "cn-custom", "Noto Sans SC", sans-serif;
+  font-size: 24px;
+  line-height: 1;
+  transform: translateY(8px);
+}
+
+.progress-endpoints > .progress-endpoint-hua {
+  translate: 0 5px;
+}
+
+/* 小尺寸品牌的双方角色向标题中心收拢，花花同时适度放大。 */
+.main-menu-hero.is-small .versus-artwork:not(.is-compact) .versus-hua {
+  left: 25px;
+  bottom: 0;
+  width: 66px;
+  height: 98px;
+}
+
+.main-menu-hero.is-small .versus-artwork:not(.is-compact) .versus-luca {
+  right: 27px;
+}
+
+/* 仅旋转红色虚线的视觉层；GAME.homeLine 与失败判定坐标保持不变。 */
+.home-line {
+  transform: rotate(-1.2deg);
+  transform-origin: center center;
+}
+
+/* 压缩游戏 HUD 进度模块的两段纵向间距。 */
+.level-copy {
+  margin-bottom: 8px;
+}
+
+.progress-percentage {
+  margin-top: 2px;
+  transform: translateY(4px);
+}
+
+/* 小尺寸品牌角色位置微调，尺寸保持不变。 */
+.main-menu-hero.is-small .versus-artwork:not(.is-compact) .versus-hua {
+  left: 21px;
+}
+
+.main-menu-hero.is-small .versus-artwork:not(.is-compact) .versus-luca {
+  bottom: 12px;
+}
+
+/* 章节标题下方使用可视化完成进度，隐藏关由竖线单独分组。 */
+.chapter-completion-dots,
+.chapter-standard-dots,
+.chapter-hidden-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chapter-completion-dots {
+  min-height: 24px;
+  margin-top: 8px;
+  gap: 10px;
+}
+
+.chapter-standard-dots,
+.chapter-hidden-dots {
+  gap: 6px;
+}
+
+.chapter-completion-dots i {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border: 2px dashed rgba(81, 72, 63, .58);
+  border-radius: 50%;
+  color: transparent;
+  background: transparent;
+  font-style: normal;
+  line-height: 1;
+}
+
+.chapter-completion-dots i.is-completed {
+  border-color: #46745a;
+  border-style: solid;
+  color: #fff;
+  background: #46745a;
+}
+
+.chapter-completion-dots i > span {
+  color: #fff;
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 900;
+  transform: translateY(-1px);
+}
+
+.chapter-hidden-separator {
+  width: 2px;
+  height: 24px;
+  background: rgba(81, 72, 63, .48);
+  transform: rotate(2deg);
+}
+
+/* 游戏 HUD 右侧得分与操作按钮作为一个整体垂直居中。 */
+.hud-score-actions {
+  height: 100%;
+  align-self: stretch;
+  align-items: center;
+}
+
+.hud-score-actions .score-block,
+.hud-score-actions .hud-actions {
+  align-self: center;
+  justify-content: center;
+}
+
+/* 普通关全部完成显示绿色；连隐藏关也完成后升级为金色。 */
+.chapter-quick-select button.is-standard-completed {
+  color: #fff;
+  background: #46745a;
+  border-color: #355b45;
+}
+
+.chapter-quick-select button.is-hidden-completed {
+  color: #514128;
+  background: #e2bd4f;
+  border-color: #9d7a25;
+}
+
+.chapter-quick-select button.is-active {
+  outline: 2px solid rgba(81, 72, 63, .58);
+  outline-offset: 2px;
+}
+
+.chapter-quick-select button.is-active:not(.is-standard-completed):not(.is-hidden-completed) {
+  color: #fff2dc;
+  background: #e23456;
+  border-color: rgba(81, 36, 43, .66);
+}
+
+/* 进一步增强隐藏关解锁条件的可读性。 */
+.level-card.is-hidden-level.is-locked .locked-sleep {
+  font-size: 23px;
+  line-height: 1.35;
+}
+
+/* 已加载区域保持斜纹流动；宽度仍完全由真实资源加载进度控制。 */
+.asset-progress span {
+  background-size: 23px 23px;
+  animation: loadingProgressFlow 650ms linear infinite, loadingProgressGlow 1.3s ease-in-out infinite alternate;
+  will-change: background-position, filter;
+}
+
+@keyframes loadingProgressFlow {
+  from { background-position: 0 0; }
+  to { background-position: 23px 0; }
+}
+
+@keyframes loadingProgressGlow {
+  from { filter: brightness(.94); }
+  to { filter: brightness(1.12); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .asset-progress span {
+    animation: none;
+  }
+}
+
+/* 章节完成盖章覆盖在右下角，仅作视觉反馈，不阻挡关卡卡片操作。 */
+.chapter-slide {
+  position: relative;
+}
+
+.chapter-completion-stamp {
+  position: absolute;
+  z-index: 20;
+  right: 42px;
+  bottom: 18px;
+  padding: 5px 8px 3px;
+  border: 3px double #46745a;
+  color: #46745a;
+  background: rgba(234, 223, 197, .76);
+  box-shadow: 1px 2px 0 rgba(53, 86, 67, .18);
+  font-family: "Courier New", monospace;
+  font-size: clamp(14px, 1.78vw, 24px);
+  font-weight: 1000;
+  line-height: .9;
+  letter-spacing: -.06em;
+  transform: rotate(-8deg);
+  pointer-events: none;
+  user-select: none;
+  animation: chapterStampDrop 480ms cubic-bezier(.18, .82, .24, 1.12) both;
+}
+
+.chapter-completion-stamp.is-perfect {
+  border-color: #b78b27;
+  color: #b78b27;
+  background: rgba(244, 229, 183, .82);
+  box-shadow: 1px 2px 0 rgba(157, 122, 37, .2);
+}
+
+/* GameBrand 的版本标识由大小两套品牌共用。 */
+.game-brand-demo {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% - 18px);
+  right: 12%;
+  width: max-content;
+  margin: 0;
+  padding: 3px 10px 2px;
+  display: block;
+  border: 2px dashed rgba(81, 72, 63, .58);
+  color: #51483f;
+  background: rgba(212, 200, 146, .84);
+  box-shadow: 2px 3px 0 rgba(58, 48, 40, .16);
+  font-family: "Courier New", monospace;
+  font-size: 18px;
+  font-weight: 1000;
+  line-height: 1;
+  transform: rotate(-2deg);
+}
+
+.main-menu-hero.is-small .game-brand-demo {
+  top: calc(100% - 12px);
+  right: 12%;
+  padding: 2px 6px 1px;
+  border-width: 1px;
+  font-size: 9px;
+}
+
+/* 关卡编号改为上溢的纸质标签；进度百分比恢复普通字体并收小。 */
+.level-progress {
+  position: relative;
+}
+
+.level-copy {
+  position: absolute;
+  z-index: 8;
+  left: 50%;
+  top: -31px;
+  width: max-content;
+  margin: 0;
+  padding: 6px 14px 5px;
+  border: 2px dashed rgba(81, 72, 63, .62);
+  color: #51483f;
+  background: #d4c892;
+  box-shadow: 3px 4px 0 rgba(58, 48, 40, .2);
+  transform: translateX(-50%) rotate(-2deg);
+}
+
+.level-copy span {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.progress-percentage {
+  margin-top: 2px;
+  font-family: inherit;
+  font-size: 18px;
+  font-weight: 900;
+  transform: translateY(2px);
+}
+
+/* 容器外的小品牌随上溢关卡标签一起上移。 */
+.persistent-game-brand.is-visible {
+  transform: translateY(-14px);
+}
+
+/* 当前章节不再绘制额外实线外轮廓。 */
+.chapter-quick-select button.is-active {
+  outline: none;
+}
+
+/* 进一步放大隐藏关解锁说明。 */
+.level-card.is-hidden-level.is-locked .locked-sleep {
+  max-width: 250px;
+  font-size: 28px;
+  line-height: 1.25;
+}
+
+/* 猫窝顺时针调整并放大；进入游戏和准备阶段时隐藏。 */
+.corner-cat-nest {
+  right: -84px;
+  bottom: -52px;
+  width: 202px;
+  height: 223px;
+  transform: rotate(-90deg) scaleX(1);
+}
+
+.persistent-corner-frame.is-game-screen .corner-cat-nest {
+  display: none;
+}
+
+/* 盖章脱离章节滑动轨道，避免被轨道的横向裁切与合成层截断。 */
+.chapter-navigation {
+  position: relative;
+}
+
+.chapter-completion-overlay {
+  position: absolute;
+  z-index: 40;
+  top: 0;
+  left: 50%;
+  width: min(430px, calc(88% - 116px));
+  height: 126px;
+  overflow: visible;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.chapter-completion-overlay .chapter-completion-stamp {
+  right: -12px;
+  top: auto;
+  bottom: -8px;
+  font-family: "cn-custom", "Noto Sans SC", sans-serif;
+  letter-spacing: 0;
+  transform: rotate(-8deg);
+}
+
+@keyframes chapterStampDrop {
+  0% {
+    opacity: 0;
+    transform: translate3d(18px, -22px, 0) rotate(-3deg) scale(1.8);
+  }
+  52% {
+    opacity: 1;
+    transform: translate3d(0, 2px, 0) rotate(-10deg) scale(.86);
+  }
+  74% {
+    transform: translate3d(0, -1px, 0) rotate(-7deg) scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotate(-8deg) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chapter-completion-stamp {
+    animation: none;
+  }
+}
+
+/* 游戏关卡标签继续向容器外上移，约保留一半高度与 HUD 重叠。 */
+.level-copy {
+  top: -50px;
+  z-index: 82;
+  color: #fff;
+  background: #46745a;
+  border-color: #355b45;
+  box-shadow: 3px 4px 0 rgba(53, 91, 69, .24);
+  opacity: 1;
+  transform: translateX(-50%);
+}
+
+/* HUD 高于容器的虚线装饰层，保证上溢标签能用实色背景完整遮挡虚线。 */
+.game-hud {
+  z-index: 80;
+}
+
+/* 章节盖章的实际裁切祖先：滚动容器会截断旋转后越过顶部的包围盒。 */
+.level-select-page .level-board {
+  overflow: visible;
+}
+
+/* 盖章已移至轨道外；视口只负责隐藏左右相邻章节。 */
+.level-select-page .chapter-viewport {
+  overflow-x: clip;
+  overflow-y: visible;
+  clip-path: none;
+}
+
+/* 统一收紧所有页面返回按钮的垂直尺寸。 */
+.back-button {
+  padding-block: 5px !important;
+}
+
+/* 品牌标题最终使用实心字色；大小两种 GameBrand 共用，彻底覆盖历史扫描线规则。 */
+.main-menu-wordmark .game-wordmark span:first-child {
+  color: #d47800;
+  background: #d47800;
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+/* “花花”字样缩小为当前尺寸的 75%；大小两种 GameBrand 保持一致比例。 */
+.main-menu-hero.is-large .main-menu-wordmark .game-wordmark span:first-child {
+  font-size: 1.71em;
+}
+
+.main-menu-hero.is-small .main-menu-wordmark .game-wordmark span:first-child {
+  font-size: 1.5em;
+}
+
+.main-menu-wordmark .game-wordmark span:last-child {
+  color: #006989;
+  background: #006989;
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+/* 游戏 HUD 中部作为一个完整纵向组：标签、轨道与百分比全部收回顶栏并居中。 */
+.game-hud .level-progress {
+  min-height: 72px;
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 11px;
+}
+
+.game-hud .level-copy {
+  position: static;
+  align-self: center;
+  width: max-content;
+  margin: 0;
+  padding: 3px 10px 2px;
+  border-width: 2px;
+  box-shadow: 2px 2px 0 rgba(53, 91, 69, .2);
+  transform: none;
+}
+
+.game-hud .level-copy span {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.game-hud .progress-track-wrap {
+  flex: 0 0 auto;
+}
+
+.game-hud .progress-percentage {
+  margin-top: 10px;
+  font-size: 14px;
+  line-height: 1;
+  transform: none;
+}
+
+@media (max-width: 620px) and (orientation: landscape) {
+  .game-hud .level-progress {
+    min-height: 58px;
+    gap: 6px;
+  }
+
+  .game-hud .level-copy {
+    padding: 2px 7px 1px;
+  }
+
+  .game-hud .level-copy span {
+    font-size: 13px;
+  }
+
+  .game-hud .progress-percentage {
+    margin-top: 5px;
+    font-size: 12px;
   }
 }

@@ -1,0 +1,27 @@
+[build]
+  command = "npm ci && npm run build:netlify"
+  publish = "dist/netlify"
+
+[build.environment]
+  NODE_VERSION = "24.12.0"
+
+# vinext 将首页预渲染为静态 HTML；游戏内页面切换由 React 状态处理，
+# 无需将所有请求重写到 index.html。
+
+[[headers]]
+  for = "/_next/static/*"
+
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/hua-bowl-favicon-v3.png"
+
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
+
+[[headers]]
+  for = "/og.png"
+
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
