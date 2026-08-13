@@ -127,8 +127,10 @@ export const LEVELS = [
   },
 ] as const satisfies readonly LevelConfig<CatTypeId, EnemyTypeId>[];
 
-export type Level = (typeof LEVELS)[number];
-export type LevelId = Level["id"];
+type LevelDefinition = (typeof LEVELS)[number];
+export type LevelId = LevelDefinition["id"];
+/** 对外暴露稳定结构，避免调用方被各关卡对象的字面量差异污染。 */
+export type Level = LevelConfig<CatTypeId, EnemyTypeId> & { id: LevelId };
 
 export type LevelChapter = {
   id: "chapter-1" | "chapter-2";
@@ -145,7 +147,7 @@ export type LevelChapter = {
  * 章节展示数据与战斗关卡分离。
  * 这样可以预先展示尚未制作的章节，同时避免空关卡进入战斗与进度计算。
  */
-export const LEVEL_CHAPTERS = [
+export const LEVEL_CHAPTERS: readonly LevelChapter[] = [
   {
     id: "chapter-1",
     label: { zh: "EPISODE 1", en: "EPISODE 1" },
@@ -169,7 +171,7 @@ export const LEVEL_CHAPTERS = [
       { id: "2-EX", kind: "hidden" },
     ],
   },
-] as const satisfies readonly LevelChapter[];
+];
 
 export function getLevel(levelId: LevelId): Level {
   return LEVELS.find((level) => level.id === levelId) ?? LEVELS[0];

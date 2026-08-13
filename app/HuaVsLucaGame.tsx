@@ -36,6 +36,7 @@ import {
   GAME_AUDIO_URLS,
   GAME_IMAGE_URLS,
   GAME_INSTANT_AUDIO_URLS,
+  GAME_UI_ASSETS,
   LEVEL_CHAPTERS,
   LEVELS,
   getLevel,
@@ -566,7 +567,6 @@ export default function HuaVsLucaGame() {
     // 一个确认框存在时忽略其他中断操作，避免重来与返回选关弹窗叠加。
     if (confirmationActionRef.current !== null) return;
     confirmationActionRef.current = action;
-    setSoundPanelOpen(false);
     const model = modelRef.current;
     confirmationWasPlayingRef.current = model.phase === "playing";
     if (confirmationWasPlayingRef.current) model.phase = "paused";
@@ -1324,7 +1324,7 @@ export default function HuaVsLucaGame() {
                                         <Image
                                           className={index < level.difficulty ? "is-active" : ""}
                                           key={index}
-                                          src="https://assets.anuluca.com/otherWebsites/flora-vs-luca/enemies/luca/head.webp"
+                                          src={ENEMY_TYPES.luca.headAsset}
                                           alt=""
                                           width={288}
                                           height={237}
@@ -1419,13 +1419,13 @@ export default function HuaVsLucaGame() {
                 <article className="about-full-row"><span>{copy.gameplay}</span><p>{copy.gameplayCopy}</p></article>
                 <article className="producer-card">
                   <span>{copy.producer}</span>
-                  <div className="producer-profile"><Image src="https://assets.anuluca.com/otherWebsites/flora-vs-luca/anutrium-logo.webp" alt="Anuluca" width={320} height={320} unoptimized /><p>Anuluca</p></div>
+                  <div className="producer-profile"><Image src={GAME_UI_ASSETS.anutriumLogo} alt="Anuluca" width={320} height={320} unoptimized /><p>Anuluca</p></div>
                 </article>
                 <article className="related-links-card">
                   <span>{copy.relatedLinks}</span>
                   <div className="related-actions external-links">
                     <a href="https://github.com/Anuluca/flora_vs_luca_web" target="_blank" rel="noreferrer"><FaGithub aria-hidden="true" size={29} />GitHub</a>
-                    <a href="https://anuluca.com" target="_blank" rel="noreferrer"><Image src="https://assets.anuluca.com/otherWebsites/flora-vs-luca/anutrium-logo.webp" alt="" width={320} height={320} unoptimized />Anutrium</a>
+                    <a href="https://anuluca.com" target="_blank" rel="noreferrer"><Image src={GAME_UI_ASSETS.anutriumLogo} alt="" width={320} height={320} unoptimized />Anutrium</a>
                   </div>
                   <p className="support-copy">{copy.supportCopy}</p>
                 </article>
@@ -1464,7 +1464,7 @@ export default function HuaVsLucaGame() {
           </header>
           <div className="secondary-content bestiary-modules">
             <button className="bestiary-module cat-module" type="button" onClick={() => navigateTo("cat-catalog")}>
-            <Image className="bestiary-single-cat" src="https://assets.anuluca.com/otherWebsites/flora-vs-luca/cats/ball-hua/projectile-01.webp" alt="" width={900} height={900} unoptimized />
+            <Image className="bestiary-single-cat" src={CAT_TYPES["ball-hua"].previewAssets[0]} alt="" width={900} height={900} unoptimized />
               <strong>{copy.cats}</strong><small>{copy.species}{labelSeparator}{CATALOG_CAT_TYPES.length}/12</small>
             </button>
             <button className="bestiary-module enemy-module" type="button" onClick={() => navigateTo("enemy-catalog")}>
@@ -1485,7 +1485,9 @@ export default function HuaVsLucaGame() {
             <div className="catalog-grid">
               {Array.from({ length: 12 }, (_, index) => {
                 const isCat = screen === "cat-catalog";
-                const catalogType = isCat ? CATALOG_CAT_SLOTS[index] : CATALOG_ENEMY_TYPES[index];
+                const catType = isCat ? CATALOG_CAT_SLOTS[index] : undefined;
+                const enemyType = isCat ? undefined : CATALOG_ENEMY_TYPES[index];
+                const catalogType = catType ?? enemyType;
                 const isDiscovered = catalogType !== undefined;
                 return (
                   <button
@@ -1494,28 +1496,28 @@ export default function HuaVsLucaGame() {
                     key={index}
                     disabled={!isDiscovered}
                     onClick={() => {
-                      if (!catalogType) return;
-                      setCatalogDetail(isCat
-                        ? { section: "cat", typeId: catalogType.id as CatTypeId, index }
-                        : { section: "enemy", typeId: catalogType.id as EnemyTypeId, index });
+                      if (catType) setCatalogDetail({ section: "cat", typeId: catType.id, index });
+                      else if (enemyType) setCatalogDetail({ section: "enemy", typeId: enemyType.id, index });
+                      else return;
                       navigateTo("catalog-detail", "fade");
                     }}
                   >
                     <div className="catalog-entry-image has-single-art" aria-hidden="true">
-                      {isDiscovered ? (
-                        isCat
-                          ? <Image src={catalogType.previewAssets[0]} alt="" width={900} height={900} unoptimized />
-                          : <EnemyAvatar typeId={catalogType.id as EnemyTypeId} />
-                      ) : <strong>?</strong>}
+                      {catType
+                        ? <Image src={catType.previewAssets[0]} alt="" width={900} height={900} unoptimized />
+                        : enemyType
+                          ? <EnemyAvatar typeId={enemyType.id} />
+                          : <strong>?</strong>}
                     </div>
                     <div>
                       <span>{formatCatalogNumber(index)}</span>
                       <h1>{catalogType ? localize(catalogType.name, locale) : copy.undiscovered}</h1>
                       {catalogType && <p className="catalog-lore">“{localize(catalogType.description, locale)}”</p>}
-                      {catalogType && (isCat
-                        ? <CatCatalogProperties typeId={catalogType.id as CatTypeId} locale={locale} />
-                        : <EnemyCatalogProperties typeId={catalogType.id as EnemyTypeId} locale={locale} />
-                      )}
+                      {catType
+                        ? <CatCatalogProperties typeId={catType.id} locale={locale} />
+                        : enemyType
+                          ? <EnemyCatalogProperties typeId={enemyType.id} locale={locale} />
+                          : null}
                     </div>
                   </button>
                 );
@@ -1569,7 +1571,7 @@ export default function HuaVsLucaGame() {
               <div className="progress-endpoints" aria-hidden="true">
                 <Image
                   className="progress-endpoint-hua"
-                  src="https://assets.anuluca.com/otherWebsites/flora-vs-luca/cats/ball-hua/projectile-01.webp"
+                  src={CAT_TYPES["ball-hua"].previewAssets[0]}
                   alt=""
                   width={900}
                   height={900}
@@ -1716,7 +1718,7 @@ export default function HuaVsLucaGame() {
           <div className="home-zone" aria-hidden="true">
             <Image
               className="scratcher-house"
-              src="https://assets.anuluca.com/otherWebsites/flora-vs-luca/scratcher-house.webp"
+              src={GAME_UI_ASSETS.scratcherHouse}
               alt=""
               width={675}
               height={900}
@@ -1728,7 +1730,7 @@ export default function HuaVsLucaGame() {
               {decorations.map((decoration) => (
                 <Image
                   key={decoration.id}
-                  src="https://assets.anuluca.com/otherWebsites/flora-vs-luca/treat.webp"
+                  src={GAME_UI_ASSETS.treat}
                   alt=""
                   width={322}
                   height={700}
@@ -1745,7 +1747,7 @@ export default function HuaVsLucaGame() {
               ))}
               <Image
                 className="extra-treat"
-                src="https://assets.anuluca.com/otherWebsites/flora-vs-luca/treat.webp"
+                src={GAME_UI_ASSETS.treat}
                 alt=""
                 width={322}
                 height={700}
@@ -1988,7 +1990,7 @@ export default function HuaVsLucaGame() {
               <div className="paper-card result-card">
                 <Image
                   className="victory-cat-nest"
-                  src="https://assets.anuluca.com/otherWebsites/flora-vs-luca/cats/victory-cat-nest.webp"
+                  src={GAME_UI_ASSETS.victoryCatNest}
                   alt=""
                   width={900}
                   height={768}
@@ -2019,7 +2021,7 @@ export default function HuaVsLucaGame() {
               <div className="paper-card result-card">
                 <Image
                   className="defeat-cat-art"
-                  src="https://assets.anuluca.com/otherWebsites/flora-vs-luca/cats/defeat-cat.webp"
+                  src={GAME_UI_ASSETS.defeatCat}
                   alt=""
                   width={988}
                   height={1000}

@@ -14,11 +14,15 @@ npm run dev
 ## 质量检查
 
 ```bash
+npm run typecheck
 npm run lint
 npm test
+# 或一次执行全部检查
+npm run check
+npm run seo:audit
 ```
 
-`npm test` 会执行生产构建、服务端渲染检查和游戏配置边界检查。
+`typecheck` 检查配置与组件的数据边界；`npm test` 会执行生产构建、服务端渲染检查和游戏配置边界检查；`seo:audit` 验证静态发布目录中的标题、摘要、canonical、sitemap、robots、Manifest 与图标。
 
 ## 项目结构
 
@@ -32,7 +36,7 @@ features/game/
     cats.ts                         # 猫咪数据
     enemies.ts                      # 敌人数据
     levels.ts                       # 关卡数据
-    assets.ts                       # 根据类型配置生成预加载资源清单
+    assets.ts                       # 公共素材地址与自动生成的预加载清单
     index.ts                        # 配置层统一出口
   domain/
     config-types.ts                 # 配置数据结构

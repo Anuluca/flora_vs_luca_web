@@ -1,37 +1,70 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import {
+  OG_IMAGE,
+  SITE_AUTHOR,
+  SITE_DESCRIPTION,
+  SITE_NAME,
+  SITE_TITLE,
+  SITE_URL,
+  absoluteUrl,
+} from "@/features/seo/site";
 import "./globals.css";
+import "./seo.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://flora-ball.anuluca.com"),
-  title: "花花vs路卡 | Anutrium Games",
-  description: "花花 vs 路卡是一款像素纸片风网页游戏。选择跑道、发射球形花花、连续撞飞路卡并守住猫窝。",
-  applicationName: "花花 vs 路卡",
-  authors: [{ name: "Anuluca", url: "https://anuluca.com" }],
-  creator: "Anuluca",
-  publisher: "Anuluca",
-  category: "game",
-  keywords: ["花花 vs 路卡", "花花", "路卡", "网页游戏", "猫咪游戏", "保龄球游戏", "像素游戏"],
+  metadataBase: new URL(SITE_URL),
+  title: { default: SITE_TITLE, template: `%s | ${SITE_NAME}` },
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  authors: [{ name: SITE_AUTHOR, url: "https://anuluca.com" }],
+  creator: SITE_AUTHOR,
+  publisher: SITE_AUTHOR,
+  category: "在线游戏",
+  classification: "免费网页游戏",
+  referrer: "origin-when-cross-origin",
+  keywords: [
+    "花花 vs 路卡",
+    "花花vs路卡",
+    "免费网页游戏",
+    "在线小游戏",
+    "猫咪游戏",
+    "塔防游戏",
+    "跑道防守游戏",
+    "浏览器游戏",
+    "Anuluca",
+  ],
   alternates: { canonical: "/" },
+  manifest: "/manifest.webmanifest",
   robots: {
     index: true,
     follow: true,
-    googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 },
+    nocache: false,
+    googleBot: {
+      index: true,
+      follow: true,
+      noimageindex: false,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
   },
   openGraph: {
-    title: "花花vs路卡 | Anutrium Games",
-    description: "发射球形花花，连续撞飞路卡，守住猫窝。",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
     type: "website",
     url: "/",
-    siteName: "花花 vs 路卡",
+    siteName: SITE_NAME,
     locale: "zh_CN",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "花花 vs 路卡网页游戏主菜单" }],
+    images: [{ url: OG_IMAGE, width: 1200, height: 630, alt: "花花 vs 路卡免费在线网页游戏主菜单" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "花花vs路卡 | Anutrium Games",
-    description: "发射球形花花，连续撞飞路卡，守住猫窝。",
-    images: ["/og.png"],
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    images: [OG_IMAGE],
   },
+  appleWebApp: { capable: true, title: SITE_NAME, statusBarStyle: "black-translucent" },
+  formatDetection: { email: false, address: false, telephone: false },
   icons: {
     icon: [{ url: "/hua-bowl-favicon-v3.png", type: "image/png", sizes: "512x512" }],
     shortcut: "/hua-bowl-favicon-v3.png",
@@ -39,28 +72,68 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#e7dfcb",
+  colorScheme: "light",
+};
+
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const structuredData = {
-    "@context": "https://schema.org",
-    "@type": "VideoGame",
-    name: "花花 vs 路卡",
-    url: "https://flora-ball.anuluca.com/",
-    description: "发射球形花花，连续撞飞路卡并守住猫窝的像素纸片风网页游戏。",
-    image: "https://flora-ball.anuluca.com/og.png",
-    inLanguage: "zh-CN",
-    genre: ["休闲游戏", "动作游戏"],
-    applicationCategory: "Game",
-    operatingSystem: "Web Browser",
-    author: { "@type": "Person", name: "Anuluca", url: "https://anuluca.com" },
-  };
+  const structuredData = [
+    {
+      "@type": "WebSite",
+      "@id": `${absoluteUrl("/")}#website`,
+      url: absoluteUrl("/"),
+      name: SITE_NAME,
+      alternateName: ["花花vs路卡", "Flora vs Luca"],
+      description: SITE_DESCRIPTION,
+      inLanguage: "zh-CN",
+      publisher: { "@id": `${absoluteUrl("/")}#creator` },
+    },
+    {
+      "@type": "VideoGame",
+      "@id": `${absoluteUrl("/")}#game`,
+      name: SITE_NAME,
+      alternateName: "Flora vs Luca",
+      url: absoluteUrl("/"),
+      description: SITE_DESCRIPTION,
+      image: absoluteUrl(OG_IMAGE),
+      screenshot: absoluteUrl(OG_IMAGE),
+      inLanguage: ["zh-CN", "en"],
+      genre: ["休闲游戏", "动作游戏", "防守游戏"],
+      applicationCategory: "BrowserGame",
+      gamePlatform: ["Web Browser", "Desktop", "Mobile"],
+      operatingSystem: "Any operating system with a modern web browser",
+      isAccessibleForFree: true,
+      playMode: "SinglePlayer",
+      author: { "@id": `${absoluteUrl("/")}#creator` },
+      publisher: { "@id": `${absoluteUrl("/")}#creator` },
+      mainEntityOfPage: { "@id": `${absoluteUrl("/")}#website` },
+    },
+    {
+      "@type": "Person",
+      "@id": `${absoluteUrl("/")}#creator`,
+      name: SITE_AUTHOR,
+      url: "https://anuluca.com/",
+      sameAs: ["https://github.com/Anuluca"],
+    },
+  ];
+  const jsonLd = { "@context": "https://schema.org", "@graph": structuredData };
 
   return (
     <html lang="zh-CN">
+      <head>
+        <link rel="preconnect" href="https://assets.anuluca.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://assets.anuluca.com" />
+        <link rel="preload" href="https://assets.anuluca.com/fonts/unboundedsans.ttf" as="font" type="font/ttf" crossOrigin="anonymous" />
+      </head>
       <body>
         {children}
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, "\\u003c") }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
         />
       </body>
     </html>

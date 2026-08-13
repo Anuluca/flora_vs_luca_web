@@ -23,13 +23,46 @@ test("server-renders the complete Hua vs Luca game shell", async () => {
 
   const html = await response.text();
   assert.match(html, /<html[^>]+lang="zh-CN"/i);
-  assert.match(html, /<title>花花vs路卡 \| Anutrium Games<\/title>/i);
+  assert.match(html, /<title>花花 vs 路卡：免费在线猫咪防守网页游戏<\/title>/i);
   assert.match(html, /正在把花花运过来\.\.\./);
   assert.match(html, /花花正在睡觉/);
   assert.match(html, /https:\/\/flora-ball\.anuluca\.com/);
   assert.match(html, /application\/ld\+json/);
+  assert.match(html, /花花 vs 路卡：免费在线猫咪防守网页游戏/);
+  assert.match(html, /href="\/guide"/);
+  assert.match(html, /href="\/bestiary"/);
+  assert.match(html, /href="\/levels"/);
+  assert.match(html, /href="\/about"/);
+  assert.match(html, /"@type":"WebSite"/);
+  assert.match(html, /"@type":"VideoGame"/);
   assert.doesNotMatch(html, /资源准备中|正在提前加载并解码全部游戏图片/);
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape|SkeletonPreview/);
+});
+
+test("renders crawlable SEO content pages with unique metadata", async () => {
+  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
+  workerUrl.searchParams.set("seo-test", `${process.pid}-${Date.now()}`);
+  const { default: worker } = await import(workerUrl.href);
+  const pages = [
+    ["/guide", "玩法指南", "基本操作"],
+    ["/bestiary", "猫咪与敌人图鉴", "牛马路卡"],
+    ["/levels", "关卡资料", "魔丸降世"],
+    ["/about", "关于游戏", "制作人"],
+  ];
+
+  for (const [path, title, content] of pages) {
+    const response = await worker.fetch(
+      new Request(`http://localhost${path}`, { headers: { accept: "text/html" } }),
+      { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } },
+      { waitUntil() {}, passThroughOnException() {} },
+    );
+    assert.equal(response.status, 200, path);
+    const html = await response.text();
+    assert.match(html, new RegExp(`<title>${title} \\| 花花 vs 路卡<\\/title>`));
+    assert.match(html, new RegExp(`rel="canonical" href="https://flora-ball\\.anuluca\\.com${path}"`));
+    assert.match(html, new RegExp(content));
+    assert.match(html, /href="\/"/);
+  }
 });
 
 test("keeps the game configuration and project boundaries verifiable", async () => {
@@ -165,8 +198,8 @@ test("keeps the game configuration and project boundaries verifiable", async () 
   assert.match(model, /getUnusedCatBonus/);
   assert.match(model, /getLevelRating/);
   assert.match(game, /className="victory-rating"/);
-  assert.match(game, /className="victory-cat-nest"[\s\S]*?src="https:\/\/assets\.anuluca\.com\/otherWebsites\/flora-vs-luca\/cats\/victory-cat-nest\.webp"/);
-  assert.match(game, /className="defeat-cat-art"[\s\S]*?src="https:\/\/assets\.anuluca\.com\/otherWebsites\/flora-vs-luca\/cats\/defeat-cat\.webp"/);
+  assert.match(game, /className="victory-cat-nest"[\s\S]*?src=\{GAME_UI_ASSETS\.victoryCatNest\}/);
+  assert.match(game, /className="defeat-cat-art"[\s\S]*?src=\{GAME_UI_ASSETS\.defeatCat\}/);
   assert.match(globals, /\.victory-cat-nest\s*\{[\s\S]*?top:\s*0;[\s\S]*?width:\s*min\(250px, 62%\);[\s\S]*?translate\(-50%, -50%\)/);
   assert.match(globals, /\.victory-overlay \.result-card\s*\{[\s\S]*?padding:\s*96px 28px 20px;[\s\S]*?overflow:\s*visible/);
   assert.match(gameAssets, /GAME_ASSET_BASE_URL\}\/cats\/victory-cat-nest\.webp/);
@@ -256,7 +289,7 @@ test("keeps the game configuration and project boundaries verifiable", async () 
   assert.match(game, /function EnemyCatalogProperties/);
   assert.match(game, /copy\.speedTiers\[enemyType\.speed\]/);
   assert.equal((game.match(/<EnemyCatalogProperties typeId=/g) ?? []).length, 2);
-  assert.match(game, /<Image src=\{catalogType\.previewAssets\[0\]\}/);
+  assert.match(game, /<Image src=\{catType\.previewAssets\[0\]\}/);
   assert.doesNotMatch(game, /catalogType\.imageAssets\.map/);
   assert.match(game, /className="catalog-trait"/);
   assert.match(game, /<CatCatalogProperties/);
@@ -330,7 +363,7 @@ test("keeps the game configuration and project boundaries verifiable", async () 
   assert.match(game, /<EnemyModel typeId=\{enemy\.typeId\}/);
   assert.match(game, /<EnemyModel typeId=\{effect\.typeId\} damaged=\{effect\.damaged\} death/);
   assert.match(game, /<EnemyAvatar typeId=\{enemyTypeId\} \/>/);
-  assert.match(game, /<EnemyAvatar typeId=\{catalogType\.id as EnemyTypeId\} \/>/);
+  assert.match(game, /<EnemyAvatar typeId=\{enemyType\.id\} \/>/);
   assert.match(game, /catalog-detail-enemy-model"><EnemyModel typeId=\{catalogDetail\.typeId as EnemyTypeId\}/);
   assert.match(globals, /\.catalog-detail-enemy-model\s*\{[\s\S]*?animation:\s*catalogEnemyIdle \.72s ease-in-out infinite alternate/);
   assert.match(globals, /@keyframes catalogEnemyIdle/);
@@ -338,7 +371,7 @@ test("keeps the game configuration and project boundaries verifiable", async () 
   assert.match(enemyAvatar, /const AVATAR_COMPONENTS = \{[\s\S]*?luca: LucaAvatar/);
   assert.match(enemyAvatar, /AVATAR_COMPONENTS\[enemyType\.avatar\]/);
   assert.match(lucaAvatar, /export function LucaAvatar/);
-  assert.match(lucaAvatar, /src="https:\/\/assets\.anuluca\.com\/otherWebsites\/flora-vs-luca\/enemies\/luca\/head\.webp"/);
+  assert.match(lucaAvatar, /src=\{ENEMY_TYPES\.luca\.headAsset\}/);
   assert.match(gameBrand, /<EnemyModel typeId="luca" priority=\{!compact\}/);
   assert.match(gameBrand, /level\.matchupPreview\.catTypeIds/);
   assert.match(gameBrand, /level\.matchupPreview\.enemyTypeIds/);
@@ -386,7 +419,7 @@ test("keeps the game configuration and project boundaries verifiable", async () 
   assert.match(game, /className="incomplete-label">\{copy\.notStarted\}/);
   assert.match(configTypes, /type LocalizedText/);
   assert.match(i18n, /LOCALE_STORAGE_KEY/);
-  assert.match(i18n, /documentTitle: "Flora vs Luca \| Anutrium Games"/);
+  assert.match(i18n, /documentTitle: "Flora vs Luca: Free Online Cat Defense Game"/);
   assert.match(i18n, /switchEnglish: "切换为中文"/);
   assert.match(game, /<MainMenuHero locale=\{locale\} size="large" \/>/);
   assert.match(game, /<MainMenuHero locale=\{locale\} size="small" \/>/);
@@ -434,8 +467,8 @@ test("keeps the game configuration and project boundaries verifiable", async () 
   assert.match(globals, /\.changelog-sheet\s*\{\s*border:\s*0;\s*background:\s*transparent/);
   assert.match(page, /<HuaVsLucaGame \/>/);
   assert.match(layout, /lang="zh-CN"/);
-  assert.match(layout, /title: "花花vs路卡 \| Anutrium Games"/);
-  assert.match(layout, /https:\/\/flora-ball\.anuluca\.com/);
+  assert.match(layout, /title: \{ default: SITE_TITLE, template: `%s \| \$\{SITE_NAME\}` \}/);
+  assert.match(layout, /metadataBase: new URL\(SITE_URL\)/);
   assert.match(layout, /\/hua-bowl-favicon-v3\.png/);
   assert.match(vite, /port:\s*3002/);
   assert.doesNotMatch(vite, /hosting\.json|sites-vite-plugin|sites\(\)/);
@@ -445,7 +478,7 @@ test("keeps the game configuration and project boundaries verifiable", async () 
   await assert.rejects(access(new URL("build/sites-vite-plugin.ts", projectRoot)));
   assert.match(gameAssets, /GAME_ASSET_BASE_URL = "https:\/\/assets\.anuluca\.com\/otherWebsites\/flora-vs-luca"/);
   assert.match(gameAssets, /export const GAME_IMAGE_URLS/);
-  assert.match(gameAssets, /export const GAME_ASSET_URLS = Array\.from\(new Set/);
+  assert.match(gameAssets, /export const GAME_ASSET_URLS(?:: string\[\])? = Array\.from\(new Set/);
   assert.doesNotMatch(`${game}\n${gameAssets}\n${cats}\n${enemies}\n${gameBrand}\n${enemyAvatar}\n${lucaAvatar}`, /["']\/assets\//);
   await access(new URL("../public/hua-bowl-favicon-v3.png", import.meta.url));
   await assert.rejects(access(new URL("../public/assets/hua-bowl-favicon-v3.png", import.meta.url)));

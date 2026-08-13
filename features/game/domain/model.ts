@@ -135,9 +135,10 @@ export function createEnemySchedule(level: Level): Enemy[] {
   let previousLane = -1;
   let repeated = 0;
   const lastSpawnAtByLane = Array.from({ length: level.lanes }, () => Number.NEGATIVE_INFINITY);
-  const configuredEnemyIds = "enemyInventory" in level
+  const enemyInventory = level.enemyInventory;
+  const configuredEnemyIds = enemyInventory
     ? level.enemyTypeIds.flatMap((typeId) => (
-      Array.from({ length: level.enemyInventory[typeId] ?? 0 }, () => typeId)
+      Array.from({ length: enemyInventory[typeId] ?? 0 }, () => typeId)
     ))
     : [];
   const enemyTypeSchedule = configuredEnemyIds.length === level.totalEnemies

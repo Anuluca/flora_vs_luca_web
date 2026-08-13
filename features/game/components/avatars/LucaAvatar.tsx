@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { ENEMY_TYPES } from "../../config";
 
 type LucaAvatarProps = {
   priority?: boolean;
@@ -10,7 +11,7 @@ export function LucaAvatar({ priority = false }: LucaAvatarProps) {
     <div className="enemy-avatar-canvas luca-avatar-canvas">
       <Image
         className="enemy-avatar-image"
-        src="https://assets.anuluca.com/otherWebsites/flora-vs-luca/enemies/luca/head.webp"
+        src={ENEMY_TYPES.luca.headAsset}
         alt=""
         width={288}
         height={237}

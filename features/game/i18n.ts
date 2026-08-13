@@ -4,7 +4,7 @@ export const LOCALE_STORAGE_KEY = "flora-vs-luca-locale";
 
 export const UI_COPY = {
   zh: {
-    documentTitle: "花花vs路卡 | Anutrium Games",
+    documentTitle: "花花 vs 路卡：免费在线猫咪防守网页游戏",
     shareTitle: "花花 vs 路卡",
     flora: "花花",
     luca: "路卡",
@@ -126,7 +126,7 @@ export const UI_COPY = {
     switchEnglish: "切换为英文",
   },
   en: {
-    documentTitle: "Flora vs Luca | Anutrium Games",
+    documentTitle: "Flora vs Luca: Free Online Cat Defense Game",
     shareTitle: "Flora vs Luca",
     flora: "FLORA",
     luca: "LUCA",

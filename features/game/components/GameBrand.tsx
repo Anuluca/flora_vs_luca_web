@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { FaArrowLeft } from "react-icons/fa";
-import { CAT_TYPES, ENEMY_TYPES, localize, type Level, type Locale } from "../config";
+import { CAT_TYPES, ENEMY_TYPES, GAME_UI_ASSETS, localize, type Level, type Locale } from "../config";
 import { UI_COPY } from "../i18n";
 import { EnemyAvatar } from "./EnemyAvatar";
 import { EnemyModel } from "./EnemyModel";
@@ -47,7 +47,7 @@ export function VersusArtwork({ compact = false }: { compact?: boolean }) {
     <div className={`versus-artwork${compact ? " is-compact" : ""}`}>
       <Image
         className="versus-hua"
-        src="https://assets.anuluca.com/otherWebsites/flora-vs-luca/cats/ball-hua/projectile-01.webp"
+        src={CAT_TYPES["ball-hua"].previewAssets[0]}
         alt="花花"
         width={900}
         height={900}
@@ -138,10 +138,10 @@ export function MatchupPreview({ level, locale }: { level: Level; locale: Locale
 export function CornerDecorations() {
   return (
     <div className="corner-decorations" aria-hidden="true">
-      <Image className="corner-cat-nest" src="https://assets.anuluca.com/otherWebsites/flora-vs-luca/scratcher-house.webp" alt="" width={540} height={720} unoptimized />
+      <Image className="corner-cat-nest" src={GAME_UI_ASSETS.scratcherHouse} alt="" width={540} height={720} unoptimized />
       <div className="corner-treats">
         {Array.from({ length: 3 }, (_, index) => (
-          <Image key={index} src="https://assets.anuluca.com/otherWebsites/flora-vs-luca/treat.webp" alt="" width={236} height={512} unoptimized />
+          <Image key={index} src={GAME_UI_ASSETS.treat} alt="" width={236} height={512} unoptimized />
         ))}
       </div>
     </div>

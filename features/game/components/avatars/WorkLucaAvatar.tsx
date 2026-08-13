@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { ENEMY_TYPES } from "../../config";
 
 type WorkLucaAvatarProps = {
   priority?: boolean;
@@ -9,11 +10,13 @@ type WorkLucaAvatarProps = {
  * 调整完整模型的头部装备时，必须同步校正此头像；电脑属于手持物，不进入头像裁切区域。
  */
 export function WorkLucaAvatar({ priority = false }: WorkLucaAvatarProps) {
+  const workLuca = ENEMY_TYPES["work-luca"];
+
   return (
     <div className="enemy-avatar-canvas work-luca-avatar">
       <Image
         className="enemy-avatar-image"
-        src="https://assets.anuluca.com/otherWebsites/flora-vs-luca/enemies/luca/head.webp"
+        src={workLuca.headAsset}
         alt=""
         width={288}
         height={237}
@@ -22,7 +25,7 @@ export function WorkLucaAvatar({ priority = false }: WorkLucaAvatarProps) {
       />
       <Image
         className="work-luca-avatar-glasses"
-        src="https://assets.anuluca.com/otherWebsites/flora-vs-luca/enemies/work-luca/glasses.webp"
+        src={workLuca.equipmentAssets.glasses}
         alt=""
         width={533}
         height={435}
