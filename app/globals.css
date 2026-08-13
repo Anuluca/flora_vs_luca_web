@@ -22,6 +22,7 @@
   --luca-clothes: #d4c892;
 }
 
+
 * {
   box-sizing: border-box;
 }
@@ -29,6 +30,8 @@
 html,
 body {
   min-height: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
 body {
@@ -36,7 +39,7 @@ body {
   color: var(--ink);
   background: #e7dfcb;
   font-family: "Courier New", "Noto Sans SC", monospace;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 button,
@@ -397,6 +400,41 @@ button:focus-visible {
   width: min(270px, 100%);
 }
 
+/* 章节锁与关卡锁样式：居中显示 */
+.chapter-slide { position: relative; }
+.chapter-locked-only,
+.chapter-lock-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 6;
+  pointer-events: none;
+  color: rgba(40, 35, 33, 0.5);
+}
+.locked-sleep {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: rgba(40, 35, 33, 0.5);
+}
+
+/* 锁下提示文字 */
+.chapter-locked-note {
+  font-family: "cn-custom", sans-serif;
+  margin-top: 12px;
+  color: rgba(40, 35, 33, 0.5);
+  font-size: clamp(28px, 3.2vw, 36px);
+  text-align: center;
+  pointer-events: none;
+  z-index: 7;
+}
+.chapter-locked-icon { display: flex; align-items: center; justify-content: center; }
+
 .menu-secondary-button {
   padding: 10px 18px;
   border: 3px solid var(--ink);
@@ -407,11 +445,17 @@ button:focus-visible {
   font-size: 13px;
   font-weight: 1000;
   cursor: pointer;
+  transition: transform 80ms ease-out, box-shadow 80ms ease-out;
 }
 
 .menu-secondary-button:hover {
-  transform: translate(-1px, -1px);
-  box-shadow: 5px 5px 0 #8a7b6d;
+  transform: translate(-2px, -2px) rotate(-1deg);
+  box-shadow: 7px 7px 0 #8a7b6d;
+}
+
+.menu-secondary-button:active {
+  transform: translate(3px, 3px);
+  box-shadow: 2px 2px 0 #8a7b6d;
 }
 
 .menu-secondary-button span { margin-left: 14px; }
@@ -469,11 +513,13 @@ button:focus-visible {
   justify-self: start;
   padding: 8px 12px;
   border: 3px solid var(--ink);
+  border-radius: 18px;
   background: #d9cbb5;
   box-shadow: 3px 3px 0 #827365;
   font-size: 11px;
   font-weight: 1000;
   cursor: pointer;
+  transform: none;
 }
 
 .level-topbar {
@@ -855,8 +901,24 @@ button:focus-visible {
 }
 
 .icon-button {
-  width: 42px;
-  height: 42px;
+  width: 48px;
+  height: 48px;
+  border: 3px solid var(--ink);
+  border-radius: 5px 4px 6px 3px;
+  color: var(--ink);
+  background: #d7c8ae;
+  box-shadow: 3px 3px 0 #786b5d;
+  font-weight: 1000;
+  cursor: pointer;
+}
+
+.hud-level-exit-button {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 3px solid var(--ink);
   border-radius: 5px 4px 6px 3px;
   color: var(--ink);
@@ -1254,7 +1316,7 @@ button:focus-visible {
    * 严格按战斗模型换算到头部画布：
    * head: left 1 / top -11 / 72 × 60
    * glasses: left 3 / top 6 / 58 × 47
-   * 禁止在具体页面覆盖这些比例，否则同一敌人的头像会发生错位。
+   * 禁止在具体页面覆盖这些比例，否则同一路卡的头像会发生错位。
    */
   left: 2.7778%;
   top: 28.3333%;
@@ -2392,11 +2454,13 @@ button:focus-visible {
   justify-self: start;
   padding: 8px 12px;
   border: 3px solid var(--ink);
+  border-radius: 18px;
   background: #d9cbb5;
   box-shadow: 3px 3px 0 #827365;
   font-size: 11px;
   font-weight: 1000;
   cursor: pointer;
+  transform: none;
 }
 
 .secondary-topbar strong { grid-column: 2; font-size: 20px; }
@@ -2459,6 +2523,7 @@ button:focus-visible {
   padding: 28px;
   overflow: hidden;
   border: 5px solid var(--ink);
+  border-radius: 10px 8px 10px 8px;
   color: var(--ink);
   background: #d7c5a5;
   box-shadow: 8px 9px 0 rgba(48, 38, 32, 0.38);
@@ -2484,6 +2549,7 @@ button:focus-visible {
   align-items: center;
   gap: 34px;
   border: 5px solid var(--ink);
+  border-radius: 10px 8px 10px 8px;
   background: var(--paper-light);
   box-shadow: 9px 10px 0 rgba(48, 38, 32, 0.36);
 }
@@ -2511,7 +2577,7 @@ button:focus-visible {
 .briefing-types small { margin-top: 5px; color: #65584e; font-size: 10px; font-weight: 800; line-height: 1.5; }
 .briefing-start { margin-top: 22px; }
 
-/* 游戏 HUD 与敌人姿态 */
+/* 游戏 HUD 与路卡姿态 */
 .game-hud {
   min-height: 92px;
   grid-template-columns: 1fr minmax(300px, 440px) 1fr;
@@ -2638,18 +2704,18 @@ button:focus-visible {
   justify-content: center;
   gap: 8px;
   border: 3px solid var(--ink) !important;
-  border-radius: 0 !important;
+  border-radius: 8px 7px 8px 7px !important;
   background: #d2bd8f !important;
   color: var(--ink) !important;
   box-shadow: 4px 4px 0 rgba(48, 38, 32, .34) !important;
   font-size: 16px !important;
   font-weight: 1000 !important;
-  transform: rotate(-3deg);
+  transform: none !important;
   transition: transform 150ms ease, box-shadow 150ms ease !important;
 }
 
 .back-button:hover {
-  transform: translateY(-2px) rotate(-7deg) !important;
+  transform: translateY(-1px) !important;
   box-shadow: 6px 7px 0 rgba(48, 38, 32, .3) !important;
 }
 
@@ -3280,23 +3346,6 @@ button:focus-visible {
   letter-spacing: .08em;
 }
 
-.briefing-close-button {
-  position: absolute;
-  left: 15px;
-  top: 15px;
-  width: 48px;
-  height: 38px;
-  display: grid;
-  place-items: center;
-  border: 2px solid rgba(68, 57, 49, .66);
-  border-radius: 4px;
-  color: #4e4138;
-  background: rgba(234, 220, 186, .92);
-  box-shadow: 3px 4px 0 rgba(49, 40, 34, .24);
-  cursor: pointer;
-  transform: rotate(-2deg);
-}
-
 .briefing-types {
   display: flex;
   align-items: flex-start;
@@ -3378,12 +3427,6 @@ button:focus-visible {
   font-weight: 1000;
   line-height: 1;
   text-align: center;
-}
-
-.briefing-close-button:hover {
-  background: #f1e3c2;
-  transform: translateY(-1px) rotate(-2deg);
-  box-shadow: 4px 5px 0 rgba(49, 40, 34, .24);
 }
 
 /* 游戏画面层级与按钮 */
@@ -3731,6 +3774,7 @@ button:focus-visible {
 .back-button {
   min-width: 108px;
   border: 2px solid #a49784 !important;
+  border-radius: 8px 7px 8px 7px !important;
   background: #e5d9c1 !important;
   box-shadow: 3px 3px 0 rgba(103, 88, 72, .22) !important;
 }
@@ -4357,7 +4401,7 @@ body.is-dragging-cat * {
 }
 
 .level-select-page .level-board-title { animation: noteArrive 400ms 90ms ease-out backwards; }
-.level-select-page .level-card { animation: cardArrive 400ms ease-out backwards; }
+.level-select-page .level-card { animation: levelCardFromLeft 400ms ease-out backwards; }
 .level-select-page .level-card:nth-child(1) { animation-delay: 160ms; }
 .level-select-page .level-card:nth-child(2) { animation-delay: 210ms; }
 .level-select-page .level-card:nth-child(3) { animation-delay: 260ms; }
@@ -4424,6 +4468,12 @@ body.is-dragging-cat * {
 @keyframes cardArrive {
   from { opacity: 0; transform: translateY(16px) scale(.975); }
   to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes levelCardFromLeft {
+  0% { opacity: 0; transform: translateX(-22px) rotate(-1.3deg) scale(.985); }
+  60% { opacity: 1; }
+  100% { opacity: 1; transform: translateX(0) rotate(0deg) scale(1); }
 }
 
 @keyframes characterFromLeft {
@@ -4534,7 +4584,7 @@ body.is-dragging-cat * {
 }
 
 .back-button {
-  border-radius: 3px !important;
+  border-radius: 8px 7px 8px 7px !important;
 }
 
 .level-card .incomplete-label {
@@ -4720,8 +4770,8 @@ body.is-dragging-cat * {
 .confirm-dialog-actions { display: flex; justify-content: center; gap: 12px; }
 .confirm-dialog-actions .primary-button {
   min-width: 0;
-  width: 48px;
-  height: 48px;
+  width: 42px;
+  height: 42px;
   padding: 0;
   display: grid;
   place-items: center;
@@ -4752,32 +4802,6 @@ body.is-dragging-cat * {
   opacity: .2;
   text-shadow: 3px 3px 0 rgba(48, 38, 33, .82);
   transition: transform 160ms ease;
-}
-
-.pause-exit-button {
-  position: absolute;
-  left: 22px;
-  top: 20px;
-  z-index: 3;
-  width: 48px;
-  height: 38px;
-  display: grid;
-  place-items: center;
-  border: 2px solid rgba(68, 57, 49, .66);
-  border-radius: 4px;
-  color: #4e4138;
-  background: rgba(234, 220, 186, .92);
-  box-shadow: 3px 4px 0 rgba(49, 40, 34, .24);
-  cursor: pointer;
-  transform: rotate(-2deg);
-  transition: transform 120ms ease, background 120ms ease, box-shadow 120ms ease;
-}
-
-.pause-exit-button:hover {
-  color: #4e4138;
-  background: #f1e3c2;
-  transform: translateY(-1px) rotate(-2deg);
-  box-shadow: 4px 5px 0 rgba(49, 40, 34, .24);
 }
 
 .pause-state-icon svg {
@@ -4846,7 +4870,7 @@ body.is-dragging-cat * {
   50% { opacity: .48; }
 }
 
-/* 敌人死亡后将组成模型的元素分别抛落，再在接近地面时淡出。 */
+/* 路卡死亡后将组成模型的元素分别抛落，再在接近地面时淡出。 */
 .enemy-death-effect {
   position: absolute;
   z-index: 13;
@@ -5904,7 +5928,6 @@ body.is-dragging-cat * {
 .sound-inline-control input[type="range"] {
   width: 128px;
   height: 5px;
-  border-radius: 999px;
   appearance: none;
   background: linear-gradient(90deg, #9b6758 var(--sound-level), #c9bfad var(--sound-level));
   cursor: pointer;
@@ -6133,13 +6156,13 @@ body.is-dragging-cat * {
 .corner-page-action svg { flex: 0 0 auto; }
 
 .corner-page-action:hover {
-  transform: translateY(-5px);
-  box-shadow: 7px 9px 0 rgba(72, 61, 50, .22);
+  transform: translate(-2px, -2px) rotate(-1deg);
+  box-shadow: 7px 7px 0 rgba(72, 61, 50, .22);
 }
 
 .corner-page-action:active {
   transform: translate(3px, 3px);
-  box-shadow: 1px 1px 0 rgba(76, 52, 47, .54);
+  box-shadow: 2px 2px 0 rgba(76, 52, 47, .54);
 }
 
 .corner-page-action.install-app-button.is-ready {
@@ -6169,8 +6192,8 @@ body.is-dragging-cat * {
 
 .corner-page-action.install-app-button:active,
 .corner-page-action.bestiary-corner-button:active {
-  transform: translate(3px, 3px) rotate(-1deg);
-  box-shadow: 1px 1px 0 rgba(76, 52, 47, .54);
+  transform: translate(3px, 3px);
+  box-shadow: 2px 2px 0 rgba(76, 52, 47, .54);
 }
 
 .corner-page-action-slot.is-bestiary { right: -42px; bottom: -22px; }
@@ -6202,19 +6225,26 @@ body.is-dragging-cat * {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 7px 15px;
+  min-height: 48px;
+  padding: 10px 19px;
   border-color: #702437;
-  border-radius: 6px 4px 7px 5px;
+  border-radius: 8px 7px 8px 7px;
   color: #fff4e4;
   background: #e23456;
   box-shadow: 3px 3px 0 rgba(88, 24, 39, .36);
-  font-size: 20px;
+  font-size: 18px;
   line-height: 1;
+  transition: transform 80ms ease-out, box-shadow 80ms ease-out;
 }
 
 .level-topbar .level-endless-button:hover {
-  transform: translateY(-2px) rotate(2deg);
-  box-shadow: 5px 5px 0 rgba(88, 24, 39, .3);
+  transform: translate(-2px, -2px) rotate(-1deg);
+  box-shadow: 7px 7px 0 rgba(88, 24, 39, .3);
+}
+
+.level-topbar .level-endless-button:active {
+  transform: translate(3px, 3px);
+  box-shadow: 2px 2px 0 rgba(88, 24, 39, .3);
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -6694,11 +6724,6 @@ body.is-dragging-cat * {
   visibility: hidden;
 }
 
-.briefing-close-button svg,
-.pause-exit-button svg {
-  transform: scaleX(-1);
-}
-
 .confirm-dialog-card {
   max-width: 520px;
 }
@@ -7064,16 +7089,6 @@ body.is-dragging-cat * {
   font-family: "cn-custom", "Noto Sans SC", sans-serif !important;
   font-size: 24px;
   font-weight: 400;
-}
-
-.pause-exit-button {
-  width: 61px;
-  height: 48px;
-}
-
-.pause-exit-button svg {
-  width: 24px;
-  height: 24px;
 }
 
 /* 进度条端点直接挂在轨道坐标系内，底部被轨道遮挡。 */
@@ -7531,7 +7546,7 @@ body.is-dragging-cat * {
   z-index: 21;
 }
 
-/* “敌人没招了”只保留文字，不显示深色提示底板。 */
+/* “路卡没招了”只保留文字，不显示深色提示底板。 */
 .red-heat-notice.is-ended {
   background: transparent;
   box-shadow: none;
@@ -7963,10 +7978,6 @@ body.is-dragging-cat * {
   transform: translateY(2px);
 }
 
-/* 容器外的小品牌随上溢关卡标签一起上移。 */
-.persistent-game-brand.is-visible {
-  transform: translateY(-14px);
-}
 
 /* 当前章节不再绘制额外实线外轮廓。 */
 .chapter-quick-select button.is-active {
@@ -8289,5 +8300,129 @@ body.is-dragging-cat * {
     align-self: start;
     justify-self: center;
     order: initial;
+  }
+}
+
+/* 2026-08-14：战斗操作、结果弹窗与手机触控的最终覆盖。 */
+.game-hud .hud-exit-zone {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-self: start;
+  position: relative;
+  z-index: 84;
+}
+
+.game-hud .hud-exit-zone .hud-level-exit-button,
+.game-page:not(.is-briefing) .hud-actions .icon-button {
+  width: 48px !important;
+  min-width: 48px !important;
+  height: 48px !important;
+  min-height: 48px !important;
+  border: 3px solid var(--ink) !important;
+  border-radius: 5px 4px 6px 3px !important;
+  background: #d7c8ae !important;
+  box-shadow: 3px 3px 0 #786b5d !important;
+  color: var(--ink) !important;
+  flex-shrink: 0;
+}
+
+/* 胜利卡片顶部角色允许越过战场边界，并整体覆盖 HUD。 */
+.battlefield.phase-victory {
+  z-index: 100;
+  overflow: visible;
+}
+
+.battlefield.phase-victory .victory-overlay {
+  z-index: 120;
+  overflow: visible;
+}
+
+.confirm-dialog-card {
+  width: min(760px, calc(100% - 40px));
+  max-width: 760px;
+  padding-inline: 44px;
+}
+
+.confirm-dialog-card h2 {
+  max-width: none;
+  white-space: nowrap;
+  font-size: clamp(38px, 4.5vw, 54px);
+  line-height: 1;
+  letter-spacing: -.06em;
+}
+
+.confirm-dialog-actions {
+  gap: 24px;
+}
+
+.confirm-dialog-actions .primary-button {
+  width: 58px;
+  min-width: 58px;
+  height: 58px;
+  min-height: 58px;
+  padding: 0;
+}
+
+.confirm-dialog-actions .primary-button svg {
+  width: 24px;
+  height: 24px;
+}
+
+.victory-overlay .result-card,
+.defeat-overlay .result-card {
+  width: min(720px, calc(100% - 44px));
+  max-width: 720px;
+}
+
+.victory-overlay .result-card > button,
+.defeat-overlay .result-card > button {
+  min-width: 220px;
+  min-height: 62px;
+  padding: 14px 18px;
+  font-size: 22px;
+}
+
+.victory-overlay .result-card > button svg,
+.defeat-overlay .result-card > button svg {
+  width: 22px;
+  height: 22px;
+}
+
+.defeat-overlay .result-card {
+  width: min(780px, calc(100% - 44px));
+  max-width: 780px;
+}
+
+.defeat-overlay .result-card h2 {
+  max-width: none;
+  white-space: nowrap;
+  font-size: clamp(36px, 5.25vw, 63px);
+  line-height: 1;
+  letter-spacing: -.06em;
+}
+
+/* 扩大滑条实际触控面，同时让旋转后的手机画布不截获拖动手势。 */
+.sound-inline-control input[type="range"] {
+  box-sizing: content-box;
+  height: 5px;
+  padding-block: 12px;
+  background-clip: content-box;
+  touch-action: none;
+  pointer-events: auto;
+  position: relative;
+  z-index: 2;
+}
+
+@media (max-width: 767px) and (orientation: portrait),
+       (max-width: 1000px) and (max-height: 620px) and (orientation: landscape) {
+  /* 手机端不渲染气球、动态网格和页面伪元素中的细网格。 */
+  .kinetic-backdrop,
+  .balloon-backdrop {
+    display: none;
+  }
+
+  .page-shell::before {
+    background: radial-gradient(ellipse at center, transparent 42%, rgba(83, 67, 54, .2) 135%);
   }
 }

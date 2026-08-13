@@ -13,6 +13,7 @@ import { createPortal, flushSync } from "react-dom";
 import {
   FaBookOpen,
   FaCat,
+  FaLock,
   FaCheck,
   FaDownload,
   FaFastForward,
@@ -261,6 +262,7 @@ export default function HuaVsLucaGame() {
   const gameBgmGainRef = useRef<GainNode | null>(null);
   const victoryAudioRef = useRef<HTMLAudioElement | null>(null);
   const defeatBgmRef = useRef<HTMLAudioElement | null>(null);
+  const defeatRetryCleanupRef = useRef<(() => void) | null>(null);
   const victoryRetryCleanupRef = useRef<(() => void) | null>(null);
   const starSoundTimersRef = useRef<number[]>([]);
   const briefingExitTimerRef = useRef<number | null>(null);
@@ -309,6 +311,8 @@ export default function HuaVsLucaGame() {
   const selectedChapterPerfect = selectedChapterHiddenSlots.some((slot) => (
     slot.levelId !== undefined && levelProgress[slot.levelId].completed
   ));
+
+  // 保持所有章节在界面上可见；章节的“解锁”仅影响点击与覆盖显示。
 
   const selectChapter = useCallback((chapterIndex: number) => {
     const nextIndex = clamp(chapterIndex, 0, LEVEL_CHAPTERS.length - 1);
@@ -368,6 +372,7 @@ export default function HuaVsLucaGame() {
       ".game-hud .level-copy",
       ".game-hud .progress-track-wrap",
       ".game-hud .score-block",
+      ".game-hud .hud-exit-zone",
       ".game-hud .hud-actions",
       ".enemy-speed-button",
     ];
@@ -377,14 +382,15 @@ export default function HuaVsLucaGame() {
         return element.animate(
           [
             { translate: "0 0" },
-            { translate: `${direction * 5}px -2px`, offset: 0.24 },
-            { translate: `${direction * -4}px 2px`, offset: 0.5 },
-            { translate: `${direction * 2}px -1px`, offset: 0.74 },
+            { translate: `${direction * 9}px -5px`, offset: 0.2 },
+            { translate: `${direction * -8}px 4px`, offset: 0.46 },
+            { translate: `${direction * 5}px -3px`, offset: 0.7 },
+            { translate: `${direction * -2}px 1px`, offset: 0.86 },
             { translate: "0 0" },
           ],
           {
-            duration: 150,
-            delay: groupIndex * 9 + elementIndex * 4,
+            duration: 190,
+            delay: groupIndex * 12 + elementIndex * 5,
             easing: "linear",
           },
         );
@@ -556,7 +562,7 @@ export default function HuaVsLucaGame() {
     });
   }, [playVictorySound]);
 
-  /** 音频路径与倍率由敌人类型配置决定；同一时刻多个敌人死亡时允许音效重叠。 */
+  /** 音频路径与倍率由路卡类型配置决定；同一时刻多个路卡死亡时允许音效重叠。 */
   const playEnemyDeathSound = useCallback((typeId: EnemyTypeId) => {
     if (!soundEnabledRef.current || typeof window === "undefined") return;
     const enemyType = ENEMY_TYPES[typeId] ?? ENEMY_TYPES.luca;
@@ -786,6 +792,30 @@ export default function HuaVsLucaGame() {
       else goToLevelSelect();
     }
   }, [confirmationAction, goBackFromEndless, goToLevelSelect, openLevelBriefing]);
+
+  /** 准备页直接退出；战斗中退出则保留二次确认，避免误触丢失进度。 */
+  const handleHudExit = useCallback(() => {
+    if (screen === "level-briefing") {
+      if (briefingMode === "endless") goBackFromEndless();
+      else goToLevelSelect();
+      return;
+    }
+    requestConfirmation("level-select");
+  }, [briefingMode, goBackFromEndless, goToLevelSelect, requestConfirmation, screen]);
+
+  /**
+   * 竖屏时整个固定画布会旋转 90°，原生 range 的横向坐标因此不可靠。
+   * 这里按屏幕中的真实轴计算音量，保证手指拖动与滑块数值同步。
+   */
+  const updateSoundVolumeFromPointer = useCallback((event: ReactPointerEvent<HTMLInputElement>) => {
+    const slider = event.currentTarget;
+    const bounds = slider.getBoundingClientRect();
+    const isPortraitCanvas = window.matchMedia("(max-width: 767px) and (orientation: portrait)").matches;
+    const progress = isPortraitCanvas
+      ? (event.clientY - bounds.top) / Math.max(bounds.height, 1)
+      : (event.clientX - bounds.left) / Math.max(bounds.width, 1);
+    changeSoundVolume(clamp(progress, 0, 1));
+  }, [changeSoundVolume]);
 
   const shoot = useCallback(
     (lane: number, catTypeId: CatTypeId, selectedAsset?: string) => {
@@ -1236,7 +1266,7 @@ export default function HuaVsLucaGame() {
             const catType = CAT_TYPES[ball.catTypeId];
             const defeated = damageEnemy(enemy, ball);
             if (catType.ability === "lane-runner") {
-              // 车轮花花固定在当前跑道继续滚动，每个敌人只受到一次接触伤害。
+              // 车轮花花固定在当前跑道继续滚动，每个路卡只受到一次接触伤害。
               continue;
             }
 
@@ -1405,13 +1435,47 @@ export default function HuaVsLucaGame() {
     }
     if (!soundEnabledRef.current) return;
 
-    const audio = defeatBgmRef.current ?? createLoadedAudio(GAME_AUDIO_URLS.defeatBgm);
-    defeatBgmRef.current = audio;
-    playOneShotAudio(audio, soundVolumeRef.current * 0.4, true);
-    // 独立 AudioBufferSource 与原失败音效同时播放，且天然只播放一次、不互相截断。
-    playInstantAudio(GAME_AUDIO_URLS.defeatStinger, 0.125);
+    defeatRetryCleanupRef.current?.();
 
-    return () => stopDefeatBgm();
+    const attemptPlayback = async () => {
+      // 优先尝试使用已解码缓冲同时播放两段音效
+      const bgmPlayed = await playInstantAudio(GAME_AUDIO_URLS.defeatBgm, 0.4).catch(() => false);
+      const stingerPlayed = await playInstantAudio(GAME_AUDIO_URLS.defeatStinger, 0.125).catch(() => false);
+      if (bgmPlayed && stingerPlayed) return true;
+
+      // 回退：确保至少通过 HTMLAudio 元素触发播放（并尽量播放两段）
+      const bgm = defeatBgmRef.current ?? createLoadedAudio(GAME_AUDIO_URLS.defeatBgm);
+      defeatBgmRef.current = bgm;
+      try { bgm.loop = false; bgm.currentTime = 0; bgm.volume = soundVolumeRef.current * 0.4; await bgm.play(); } catch {}
+      try { const st = createLoadedAudio(GAME_AUDIO_URLS.defeatStinger); st.loop = false; st.currentTime = 0; st.volume = soundVolumeRef.current * 0.125; await st.play(); } catch {}
+      return bgmPlayed || stingerPlayed;
+    };
+
+    void attemptPlayback().then((played) => {
+      if (played || !soundEnabledRef.current) return;
+
+      let retried = false;
+      const cleanup = () => {
+        window.removeEventListener("pointerdown", retryOnInteraction, true);
+        window.removeEventListener("touchend", retryOnInteraction, true);
+        defeatRetryCleanupRef.current = null;
+      };
+      const retryOnInteraction = () => {
+        if (retried) return;
+        retried = true;
+        cleanup();
+        void attemptPlayback();
+      };
+
+      defeatRetryCleanupRef.current = cleanup;
+      window.addEventListener("pointerdown", retryOnInteraction, { once: true, capture: true });
+      window.addEventListener("touchend", retryOnInteraction, { once: true, capture: true });
+    });
+
+    return () => {
+      defeatRetryCleanupRef.current?.();
+      stopDefeatBgm();
+    };
   }, [createLoadedAudio, playInstantAudio, snapshot.phase, stopDefeatBgm]);
 
   useEffect(() => () => {
@@ -1452,7 +1516,7 @@ export default function HuaVsLucaGame() {
 
   const activeLevel = getLevel(snapshot.levelId);
   const liveEnemies = snapshot.enemies.filter((enemy) => enemy.spawned && !enemy.defeated);
-  // 顶部进度表示敌人出场进程，与击杀结果无关；红温区间也复用同一生成进度。
+  // 顶部进度表示路卡出场进程，与击杀结果无关；红温区间也复用同一生成进度。
   const spawnedProgress = snapshot.mode === "endless"
     ? 0
     : snapshot.enemies.reduce((count, enemy) => count + Number(enemy.spawned), 0) / activeLevel.totalEnemies;
@@ -1598,15 +1662,27 @@ export default function HuaVsLucaGame() {
                     "--chapter-offset": `${selectedChapterIndex * (-100 / LEVEL_CHAPTERS.length)}%`,
                   } as CSSProperties}
                 >
-                  {LEVEL_CHAPTERS.map((chapter) => {
+                  {LEVEL_CHAPTERS.map((chapter, chapterIndex) => {
                     // 隐藏关不参与章节完成判定；所有普通槽位都必须已配置且已通关。
                     const standardSlots = chapter.slots.filter((slot) => slot.kind !== "hidden");
                     const hiddenSlots = chapter.slots.filter((slot) => slot.kind === "hidden");
                     const hiddenLevelUnlocked = standardSlots.length > 0 && standardSlots.every((slot) => (
                       slot.levelId !== undefined && levelProgress[slot.levelId].completed
                     ));
+                    // 章节解锁需检查前一章（排除 hidden 槽）是否全部完成；第 0 章始终解锁。
+                    const chapterUnlocked = chapterIndex === 0 || LEVEL_CHAPTERS.slice(0, chapterIndex).every((prev) => {
+                      const prevStandard = prev.slots.filter((s) => s.kind !== "hidden");
+                      return prevStandard.length > 0 && prevStandard.every((s) => s.levelId !== undefined && levelProgress[s.levelId].completed);
+                    });
                     return (
                     <div className="chapter-slide" key={chapter.id}>
+                      { !chapterUnlocked ? (
+                        <div className="chapter-locked-only" aria-hidden="true">
+                          <div className="chapter-locked-icon"><FaLock aria-hidden="true" size={64} /></div>
+                          <div className="chapter-locked-note" aria-hidden="true">请先完成上一章节</div>
+                        </div>
+                      ) : (
+                      <>
                       <div className="level-board-title">
                         <span className="tape tape-one" />
                         <span className="tape tape-two" />
@@ -1633,7 +1709,23 @@ export default function HuaVsLucaGame() {
                         {chapter.slots.map((slot) => {
                           const level = slot.levelId ? getLevel(slot.levelId) : null;
                           const isHiddenLevel = slot.kind === "hidden";
-                          const isLevelAvailable = level !== null && (!isHiddenLevel || hiddenLevelUnlocked);
+                            // 逐步解锁：普通关卡需前一个普通关卡已通关才可进入；隐藏关仍按整章完成判定解锁。
+                            let isLevelAvailable = false;
+                            if (level !== null) {
+                              if (!chapterUnlocked) {
+                                isLevelAvailable = false;
+                              } else if (isHiddenLevel) {
+                                isLevelAvailable = !!hiddenLevelUnlocked;
+                              } else {
+                                const standardOrdered = chapter.slots.filter((s) => s.kind !== "hidden");
+                                const idx = standardOrdered.findIndex((s) => s.id === slot.id);
+                                if (idx <= 0) isLevelAvailable = true;
+                                else {
+                                  const prev = standardOrdered[idx - 1];
+                                  isLevelAvailable = Boolean(prev.levelId && levelProgress[prev.levelId].completed);
+                                }
+                              }
+                            }
                           const progressEntry = isLevelAvailable ? levelProgress[level.id] : null;
                           const rating = isLevelAvailable && progressEntry
                             ? getLevelRating(level, progressEntry.bestScore, progressEntry.completed)
@@ -1679,14 +1771,16 @@ export default function HuaVsLucaGame() {
                                     : <i className="incomplete-label">{copy.notStarted}</i>}
                                 </>
                               ) : (
-                                <strong className="locked-sleep">
-                                  {isHiddenLevel ? copy.hiddenLevelLocked : copy.lucaSleeping}
-                                </strong>
+                                <div className="locked-sleep" aria-hidden="true">
+                                  <FaLock aria-hidden="true" size={28} />
+                                </div>
                               )}
                             </button>
                           );
                         })}
                       </div>
+                      </>
+                    )}
                     </div>
                     );
                   })}
@@ -1724,6 +1818,11 @@ export default function HuaVsLucaGame() {
               const hiddenCompleted = hiddenSlots.some((slot) => (
                 slot.levelId !== undefined && levelProgress[slot.levelId].completed
               ));
+
+              const chapterUnlocked = index === 0 || LEVEL_CHAPTERS.slice(0, index).every((prev) => {
+                const prevStandard = prev.slots.filter((s) => s.kind !== "hidden");
+                return prevStandard.length > 0 && prevStandard.every((s) => s.levelId !== undefined && levelProgress[s.levelId].completed);
+              });
 
               return (
                 <button
@@ -1899,6 +1998,18 @@ export default function HuaVsLucaGame() {
       {(screen === "game" || screen === "level-briefing") && (
       <section ref={gamePageRef} className={`game-cabinet game-page${screen === "level-briefing" ? " is-briefing" : ""}${briefingExiting ? " is-briefing-exiting" : ""}`} aria-label={screen === "level-briefing" ? copy.readyToDefend : copy.gameLabel}>
         <header className="game-hud">
+          <div className="hud-exit-zone">
+            <button
+              className="icon-button hud-level-exit-button"
+              type="button"
+              onClick={handleHudExit}
+              disabled={confirmationAction !== null || (screen === "game" && !(["playing", "paused"] as Phase[]).includes(snapshot.phase))}
+              aria-label={snapshot.mode === "endless" && endlessReturnScreen === "main-menu" ? copy.backMainMenu : copy.backLevelSelect}
+              title={snapshot.mode === "endless" && endlessReturnScreen === "main-menu" ? copy.backMainMenu : copy.backLevelSelect}
+            >
+              <FaSignOutAlt aria-hidden="true" size={18} />
+            </button>
+          </div>
           <div className="level-progress" aria-label={snapshot.mode === "endless" ? copy.endlessMode : `${copy.levelProgress} ${Math.round(progress)}%`}>
             <div className="level-copy">
               <span>{snapshot.mode === "endless" ? copy.endlessMode : `${copy.level} ${activeLevel.id}`}</span>
@@ -1944,16 +2055,6 @@ export default function HuaVsLucaGame() {
             </div>
             <div className="hud-actions">
               <button
-                className="icon-button hud-level-exit-button"
-                type="button"
-                onClick={() => requestConfirmation("level-select")}
-                disabled={screen === "level-briefing" || confirmationAction !== null || !(["playing", "paused"] as Phase[]).includes(snapshot.phase)}
-                aria-label={copy.backLevelSelect}
-                title={copy.backLevelSelect}
-              >
-                <FaSignOutAlt aria-hidden="true" size={18} />
-              </button>
-              <button
                 className="icon-button"
                 type="button"
                 onClick={() => requestConfirmation("restart")}
@@ -1994,15 +2095,6 @@ export default function HuaVsLucaGame() {
           {(screen === "level-briefing" || briefingExiting) && (
             <div className={`game-overlay briefing-overlay${briefingExiting ? " is-exiting" : ""}`}>
               <div className="briefing-sheet" role="dialog" aria-modal="true" aria-labelledby="briefing-title">
-                <button
-                  className="briefing-close-button"
-                  type="button"
-                  onClick={briefingMode === "endless" ? goBackFromEndless : goToLevelSelect}
-                  aria-label={briefingMode === "endless" && endlessReturnScreen === "main-menu" ? copy.backMainMenu : copy.backLevelSelect}
-                  title={briefingMode === "endless" && endlessReturnScreen === "main-menu" ? copy.backMainMenu : copy.backLevelSelect}
-                >
-                  <FaSignOutAlt aria-hidden="true" size={18} />
-                </button>
                 <span className="briefing-level-label">{briefingMode === "endless" ? copy.endlessMode : `${copy.level} ${selectedLevel.id}`}</span>
                 <h1 id="briefing-title">{copy.readyToDefend}</h1>
                 <p>{briefingMode === "endless" ? copy.currentLineup : copy.levelLineup}</p>
@@ -2061,7 +2153,6 @@ export default function HuaVsLucaGame() {
               priority
               unoptimized
             />
-            <span className="home-label">{copy.floraHome}</span>
             <div className="treats-on-house">
               {decorations.map((decoration) => (
                 <Image
@@ -2150,7 +2241,7 @@ export default function HuaVsLucaGame() {
             </div>
 
             {liveEnemies.map((enemy) => {
-              // HMR 期间旧局模型可能没有 typeId，回退到首个敌人类型避免本地热更新中断。
+              // HMR 期间旧局模型可能没有 typeId，回退到首个路卡类型避免本地热更新中断。
               const enemyType = ENEMY_TYPES[enemy.typeId] ?? ENEMY_TYPES.luca;
               const damaged = enemy.health < enemyType.maxHealth;
               const damagedSpeedMultiplier = damaged
@@ -2286,19 +2377,6 @@ export default function HuaVsLucaGame() {
                 }
               }}
             >
-              <button
-                className="pause-exit-button"
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  if (snapshot.mode === "endless") goBackFromEndless();
-                  else goToLevelSelect();
-                }}
-                aria-label={copy.backLevelSelect}
-                title={copy.backLevelSelect}
-              >
-                <FaSignOutAlt aria-hidden="true" size={18} />
-              </button>
               <span className="pause-state-icon" aria-hidden="true">
                 <FaPause className="pause-icon-pause" size={62} />
                 <FaPlay className="pause-icon-play" size={58} />
@@ -2428,6 +2506,20 @@ export default function HuaVsLucaGame() {
               max="100"
               value={Math.round(soundVolume * 100)}
               onChange={(event) => changeSoundVolume(Number(event.target.value) / 100)}
+              onPointerDown={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                event.currentTarget.setPointerCapture(event.pointerId);
+                updateSoundVolumeFromPointer(event);
+              }}
+              onPointerMove={(event) => {
+                if (event.currentTarget.hasPointerCapture(event.pointerId)) updateSoundVolumeFromPointer(event);
+              }}
+              onPointerUp={(event) => {
+                updateSoundVolumeFromPointer(event);
+                if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+              }}
+              onClick={(event) => event.stopPropagation()}
               disabled={confirmationAction !== null}
               aria-label={copy.volume}
               style={{ "--sound-level": `${soundVolume * 100}%` } as CSSProperties}
