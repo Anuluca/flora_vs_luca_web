@@ -266,3 +266,11 @@
     font-size: 13px;
   }
 }
+
+/* 手机游戏使用旋转后的固定画布，SEO 正文只保留在桌面端页面下方，避免覆盖移动端开屏。 */
+@media (max-width: 767px) and (orientation: portrait),
+       (max-width: 1000px) and (max-height: 620px) and (orientation: landscape) {
+  .seo-home-content {
+    display: none;
+  }
+}

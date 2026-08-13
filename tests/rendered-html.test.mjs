@@ -461,6 +461,7 @@ test("keeps the game configuration and project boundaries verifiable", async () 
   assert.match(balloonBackdrop, /reducedMotion\.addEventListener\("change"/);
   assert.match(globals, /\.balloon-backdrop\s*\{/);
   assert.match(globals, /body\s*\{\s*background:\s*#e7dfcb/);
+  assert.match(await readFile(new URL("../app/seo.css", import.meta.url), "utf8"), /@media \(max-width: 767px\) and \(orientation: portrait\)[\s\S]*?\.seo-home-content\s*\{\s*display:\s*none/);
   assert.match(globals, /html\[data-page-transition="fade"\]/);
   assert.match(globals, /\.treats-on-house img\s*\{[\s\S]*?animation:\s*none;/);
   assert.doesNotMatch(game, /copy\.dangerLine/);
