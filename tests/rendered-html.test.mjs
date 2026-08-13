@@ -66,7 +66,7 @@ test("renders crawlable SEO content pages with unique metadata", async () => {
 });
 
 test("keeps the game configuration and project boundaries verifiable", async () => {
-  const [game, globals, cats, enemies, levels, gameAssets, model, storage, configTypes, i18n, confirmDialog, enemyAvatar, lucaAvatar, enemyModel, gameBrand, kineticBackdrop, balloonBackdrop, page, layout, vite, packageJson] = await Promise.all([
+  const [game, globals, cats, enemies, levels, gameAssets, model, storage, configTypes, i18n, confirmDialog, enemyAvatar, lucaAvatar, enemyModel, gameBrand, kineticBackdrop, balloonBackdrop, page, layout, manifest, pwaInstall, serviceWorker, netlify, vite, packageJson] = await Promise.all([
     readFile(new URL("../app/HuaVsLucaGame.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
     readFile(new URL("../features/game/config/cats.ts", import.meta.url), "utf8"),
@@ -86,6 +86,10 @@ test("keeps the game configuration and project boundaries verifiable", async () 
     readFile(new URL("../features/game/components/BalloonBackdrop.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/manifest.ts", import.meta.url), "utf8"),
+    readFile(new URL("../features/pwa/usePwaInstall.ts", import.meta.url), "utf8"),
+    readFile(new URL("../public/sw.js", import.meta.url), "utf8"),
+    readFile(new URL("../netlify.toml", import.meta.url), "utf8"),
     readFile(new URL("../vite.config.ts", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
   ]);
@@ -345,6 +349,40 @@ test("keeps the game configuration and project boundaries verifiable", async () 
   assert.match(game, /className=\{`cat-inventory/);
   assert.match(game, /activeLevel\.tips\.map/);
   assert.match(game, /className="site-utility-area"/);
+  assert.match(game, /data-screen=\{screen\}/);
+  assert.match(game, /screen === "main-menu" && !appInstalled/);
+  assert.match(game, /className=\{`menu-secondary-button corner-page-action install-app-button/);
+  assert.match(game, /onClick=\{installApp\}/);
+  assert.match(game, /copy\.installHints\[installHint\]/);
+  assert.match(game, /screen === "level-select"[\s\S]*?className="menu-secondary-button corner-page-action bestiary-corner-button"[\s\S]*?openBestiary\("level-select"\)/);
+  assert.match(game, /className="level-endless-button"[\s\S]*?openEndlessBriefing\("level-select"\)/);
+  assert.match(game, /const goBackFromBestiary = useCallback/);
+  assert.match(game, /bestiaryReturnScreenRef\.current === "level-select"\) goToLevelSelect\(\)/);
+  assert.match(game, /const goBackFromEndless = useCallback/);
+  assert.match(game, /endlessReturnScreen === "level-select"\) goToLevelSelect\(\)/);
+  assert.match(game, /briefingMode === "endless" \? goBackFromEndless : goToLevelSelect/);
+  assert.match(game, /modelRef\.current\.mode === "endless"\) goBackFromEndless\(\)/);
+  assert.match(game, /snapshot\.mode === "endless"\) goBackFromEndless\(\)/);
+  assert.match(i18n, /installApp: "添加为桌面 App"/);
+  assert.match(manifest, /id: "\/"[\s\S]*?start_url: "\/"[\s\S]*?scope: "\/"[\s\S]*?display: "standalone"/);
+  assert.match(pwaInstall, /window\.addEventListener\("beforeinstallprompt"/);
+  assert.match(pwaInstall, /navigator\.serviceWorker\.register\("\/sw\.js", \{ scope: "\/" \}\)/);
+  assert.match(pwaInstall, /window\.matchMedia\("\(display-mode: standalone\)"\)/);
+  assert.match(serviceWorker, /self\.addEventListener\("install"/);
+  assert.match(serviceWorker, /self\.addEventListener\("fetch"/);
+  assert.match(serviceWorker, /isLocalDevelopment \|\| event\.request\.method !== "GET"/);
+  assert.match(netlify, /for = "\/sw\.js"[\s\S]*?max-age=0, must-revalidate[\s\S]*?Service-Worker-Allowed = "\/"/);
+  assert.match(globals, /\.corner-page-action\.install-app-button\.is-ready\s*\{[\s\S]*?background:\s*#46745a/);
+  assert.match(globals, /\.bestiary-corner-button\s*\{[\s\S]*?min-height:\s*70px;[\s\S]*?font-size:\s*26px/);
+  assert.match(globals, /\.bestiary-corner-button\s*\{[\s\S]*?font-family:\s*"cn-custom"/);
+  assert.match(globals, /\.corner-page-action\.install-app-button\s*\{[\s\S]*?padding:\s*7px 13px/);
+  assert.match(globals, /\.corner-page-action\.install-app-button\s*\{[\s\S]*?border-style:\s*dashed;[\s\S]*?background:\s*rgba\(235, 226, 208, \.76\)/);
+  assert.match(globals, /\.corner-page-action\s*\{[\s\S]*?transform:\s*none/);
+  assert.match(globals, /\.corner-page-action:active\s*\{[\s\S]*?translate\(3px, 3px\)[\s\S]*?box-shadow:\s*1px 1px 0/);
+  assert.match(globals, /\.level-topbar \.level-endless-button\s*\{[\s\S]*?font-size:\s*20px/);
+  assert.match(globals, /非主菜单页面的容器外顶栏[\s\S]*?\.page-shell:not\(\[data-screen="main-menu"\]\):not\(\[data-screen="loading"\]\)\s*\{[\s\S]*?display:\s*grid;[\s\S]*?> \.persistent-game-brand[\s\S]*?grid-column:\s*1[\s\S]*?> \.site-utility-area[\s\S]*?grid-column:\s*2/);
+  assert.match(globals, /\.level-topbar \.level-endless-button\s*\{[\s\S]*?background:\s*#e23456/);
+  assert.doesNotMatch(gameBrand, /className="corner-cat-nest"/);
   assert.match(game, /className="site-utility-button language-switch-button"/);
   assert.match(game, /copy\.restartQuestion/);
   assert.match(game, /requestConfirmation\("level-select"\)/);

@@ -6098,6 +6098,129 @@ body.is-dragging-cat * {
   .site-utility-button { width: 36px; height: 36px; }
 }
 
+/* 右下角原猫窝位置改为页面操作入口；固定装饰层保证按钮不会被容器裁切。 */
+.corner-page-action-slot {
+  position: absolute;
+  right: -48px;
+  bottom: -25px;
+  z-index: 110;
+  display: grid;
+  justify-items: end;
+  gap: 9px;
+  pointer-events: auto;
+}
+
+.corner-page-action {
+  min-width: 210px;
+  min-height: 60px;
+  padding: 12px 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 11px;
+  border: 3px solid #51483f;
+  border-radius: 6px 4px 8px 5px;
+  color: #51483f;
+  background: #e7dcc3;
+  box-shadow: 5px 6px 0 rgba(72, 61, 50, .25);
+  font-size: 18px;
+  font-weight: 1000;
+  line-height: 1;
+  transform: none;
+  cursor: pointer;
+}
+
+.corner-page-action svg { flex: 0 0 auto; }
+
+.corner-page-action:hover {
+  transform: translateY(-5px);
+  box-shadow: 7px 9px 0 rgba(72, 61, 50, .22);
+}
+
+.corner-page-action:active {
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0 rgba(76, 52, 47, .54);
+}
+
+.corner-page-action.install-app-button.is-ready {
+  color: #fff8e8;
+  background: #46745a;
+  border-color: #355b45;
+  box-shadow: 5px 6px 0 rgba(53, 91, 69, .35);
+}
+
+.corner-page-action.install-app-button {
+  min-height: 52px;
+  padding: 7px 13px;
+  border-color: rgba(92, 83, 72, .48);
+  border-style: dashed;
+  color: #756c60;
+  background: rgba(235, 226, 208, .76);
+  box-shadow: 4px 4px 0 rgba(72, 61, 50, .14);
+}
+
+.corner-page-action.install-app-button.is-ready {
+  border-color: rgba(65, 105, 82, .5);
+  border-style: dashed;
+  color: #596d60;
+  background: rgba(218, 229, 211, .78);
+  box-shadow: 4px 4px 0 rgba(53, 91, 69, .16);
+}
+
+.corner-page-action.install-app-button:active,
+.corner-page-action.bestiary-corner-button:active {
+  transform: translate(3px, 3px) rotate(-1deg);
+  box-shadow: 1px 1px 0 rgba(76, 52, 47, .54);
+}
+
+.corner-page-action-slot.is-bestiary { right: -42px; bottom: -22px; }
+
+.bestiary-corner-button {
+  min-width: 230px;
+  min-height: 70px;
+  font-family: "cn-custom", "Noto Sans SC", sans-serif;
+  font-size: 26px;
+}
+
+.corner-action-hint {
+  width: 290px;
+  margin: 0;
+  padding: 9px 12px;
+  border-left: 4px solid #b18b35;
+  color: #5d5146;
+  background: rgba(241, 228, 192, .96);
+  box-shadow: 3px 4px 0 rgba(72, 61, 50, .18);
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.45;
+  text-align: left;
+}
+
+.level-topbar .level-endless-button {
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 7px 15px;
+  border-color: #702437;
+  border-radius: 6px 4px 7px 5px;
+  color: #fff4e4;
+  background: #e23456;
+  box-shadow: 3px 3px 0 rgba(88, 24, 39, .36);
+  font-size: 20px;
+  line-height: 1;
+}
+
+.level-topbar .level-endless-button:hover {
+  transform: translateY(-2px) rotate(2deg);
+  box-shadow: 5px 5px 0 rgba(88, 24, 39, .3);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .corner-page-action-slot { animation: softRise 360ms 320ms ease-out backwards; }
+}
+
 @media (max-width: 767px) and (orientation: portrait) {
   .page-shell {
     transform: translate(-50%, -50%) rotate(90deg) scale(var(--mobile-shell-scale, .5));
@@ -8117,5 +8240,54 @@ body.is-dragging-cat * {
   .game-page:not(.is-briefing) .hud-actions .icon-button svg {
     width: 22px;
     height: 22px;
+  }
+
+  /* 非主菜单页面的容器外顶栏：左侧小号品牌，右侧工具按钮组。 */
+  .page-shell:not([data-screen="main-menu"]):not([data-screen="loading"]) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: 46px 700px;
+    place-items: initial;
+    align-content: center;
+    column-gap: 0;
+    row-gap: 6px;
+  }
+
+  .page-shell:not([data-screen="main-menu"]):not([data-screen="loading"]) > .persistent-game-brand {
+    position: relative;
+    z-index: 181;
+    grid-column: 1;
+    grid-row: 1;
+    width: 240px;
+    height: 100px;
+    display: flex;
+    align-self: end;
+    justify-self: start;
+    align-items: center;
+    justify-content: center;
+    opacity: 1;
+    transform: translate(12px, 18px) scale(.78);
+    transform-origin: left bottom;
+    pointer-events: none;
+  }
+
+  .page-shell:not([data-screen="main-menu"]):not([data-screen="loading"]) > .site-utility-area {
+    position: relative;
+    z-index: 182;
+    grid-column: 2;
+    grid-row: 1;
+    align-self: center;
+    justify-self: end;
+    order: initial;
+    margin-right: 14px;
+    min-width: max-content;
+  }
+
+  .page-shell:not([data-screen="main-menu"]):not([data-screen="loading"]) > .game-cabinet {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    align-self: start;
+    justify-self: center;
+    order: initial;
   }
 }

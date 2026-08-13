@@ -39,6 +39,13 @@
     Cache-Control = "public, max-age=86400"
 
 [[headers]]
+  for = "/sw.js"
+
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+    Service-Worker-Allowed = "/"
+
+[[headers]]
   for = "/*"
 
   [headers.values]

@@ -14,6 +14,7 @@ import {
   FaBookOpen,
   FaCat,
   FaCheck,
+  FaDownload,
   FaFastForward,
   FaGithub,
   FaHistory,
@@ -47,6 +48,7 @@ import {
   type Locale,
 } from "@/features/game/config";
 import { LOADING_MESSAGES, LOCALE_STORAGE_KEY, UI_COPY } from "@/features/game/i18n";
+import { usePwaInstall } from "@/features/pwa/usePwaInstall";
 import {
   GAME,
   INITIAL_DECORATIONS,
@@ -101,6 +103,7 @@ type ViewTransitionDocument = Document & {
 };
 
 type PageTransitionMode = "page" | "fade";
+type ParentScreen = "main-menu" | "level-select";
 type ConfirmationAction = "restart" | "level-select";
 const FIXED_VISUAL_LANE_COUNT = 5;
 const CAT_DROP_DUST_DURATION = 0.46;
@@ -267,6 +270,7 @@ export default function HuaVsLucaGame() {
   const landingShakeAnimationsRef = useRef<Animation[]>([]);
   const confirmationWasPlayingRef = useRef(false);
   const confirmationActionRef = useRef<ConfirmationAction | null>(null);
+  const bestiaryReturnScreenRef = useRef<ParentScreen>("main-menu");
   const localeReadyRef = useRef(false);
 
   const [snapshot, setSnapshot] = useState<GameModel>(initialModel);
@@ -291,6 +295,8 @@ export default function HuaVsLucaGame() {
   const [catalogDetail, setCatalogDetail] = useState<CatalogDetail | null>(null);
   const [confirmationAction, setConfirmationAction] = useState<ConfirmationAction | null>(null);
   const [enemySpeedMultiplier, setEnemySpeedMultiplier] = useState<EnemySpeedMultiplier>(1);
+  const [endlessReturnScreen, setEndlessReturnScreen] = useState<ParentScreen>("main-menu");
+  const { canPromptInstall, installed: appInstalled, installHint, install: installApp } = usePwaInstall();
   const copy = UI_COPY[locale];
   const loadingMessages = LOADING_MESSAGES[locale];
   const labelSeparator = locale === "zh" ? "：" : ": ";
@@ -634,6 +640,21 @@ export default function HuaVsLucaGame() {
     sync();
   }, [clearStarSoundTimers, navigateTo, selectedLevelId, stopDefeatBgm, sync]);
 
+  const openBestiary = useCallback((returnScreen: ParentScreen) => {
+    bestiaryReturnScreenRef.current = returnScreen;
+    navigateTo("bestiary");
+  }, [navigateTo]);
+
+  const goBackFromBestiary = useCallback(() => {
+    if (bestiaryReturnScreenRef.current === "level-select") goToLevelSelect();
+    else goToMainMenu();
+  }, [goToLevelSelect, goToMainMenu]);
+
+  const goBackFromEndless = useCallback(() => {
+    if (endlessReturnScreen === "level-select") goToLevelSelect();
+    else goToMainMenu();
+  }, [endlessReturnScreen, goToLevelSelect, goToMainMenu]);
+
   const startFromMainMenu = useCallback(() => {
     playStartActionSound();
     goToLevelSelect();
@@ -659,6 +680,11 @@ export default function HuaVsLucaGame() {
     navigateTo("level-briefing", "fade");
     sync();
   }, [clearStarSoundTimers, navigateTo, setLane, stopDefeatBgm, sync]);
+
+  const openEndlessBriefing = useCallback((returnScreen: ParentScreen) => {
+    setEndlessReturnScreen(returnScreen);
+    openLevelBriefing(LEVELS[0].id, "endless");
+  }, [openLevelBriefing]);
 
   const togglePause = useCallback(() => {
     const model = modelRef.current;
@@ -755,8 +781,11 @@ export default function HuaVsLucaGame() {
     confirmationActionRef.current = null;
     setConfirmationAction(null);
     if (action === "restart") openLevelBriefing(modelRef.current.levelId, modelRef.current.mode ?? "level");
-    else if (action === "level-select") goToLevelSelect();
-  }, [confirmationAction, goToLevelSelect, openLevelBriefing]);
+    else if (action === "level-select") {
+      if (modelRef.current.mode === "endless") goBackFromEndless();
+      else goToLevelSelect();
+    }
+  }, [confirmationAction, goBackFromEndless, goToLevelSelect, openLevelBriefing]);
 
   const shoot = useCallback(
     (lane: number, catTypeId: CatTypeId, selectedAsset?: string) => {
@@ -1438,12 +1467,35 @@ export default function HuaVsLucaGame() {
   const settlementCurrentCatId = settlementCats[Math.min(snapshot.settlementCatsCounted, Math.max(0, settlementCats.length - 1))];
 
   return (
-    <main className="page-shell" lang={locale === "zh" ? "zh-CN" : "en"} data-locale={locale}>
+    <main className="page-shell" lang={locale === "zh" ? "zh-CN" : "en"} data-locale={locale} data-screen={screen}>
       <div className="wall-doodle wall-doodle-one" aria-hidden="true">✦</div>
       <div className="wall-doodle wall-doodle-two" aria-hidden="true">=^･ω･^=</div>
       {screen !== "loading" && (
         <div className={`persistent-corner-frame${screen === "game" || screen === "level-briefing" ? " is-game-screen" : ""}`}>
           <CornerDecorations />
+          {screen === "main-menu" && !appInstalled && (
+            <div className="corner-page-action-slot is-install">
+              {installHint && (
+                <p className="corner-action-hint" role="status">
+                  {copy.installHints[installHint]}
+                </p>
+              )}
+              <button
+                className={`menu-secondary-button corner-page-action install-app-button${canPromptInstall ? " is-ready" : ""}`}
+                type="button"
+                onClick={installApp}
+              >
+                <FaDownload aria-hidden="true" size={22} /> {copy.installApp}
+              </button>
+            </div>
+          )}
+          {screen === "level-select" && (
+            <div className="corner-page-action-slot is-bestiary">
+              <button className="menu-secondary-button corner-page-action bestiary-corner-button" type="button" onClick={() => openBestiary("level-select")}>
+                <FaBookOpen aria-hidden="true" size={29} /> {copy.bestiary}
+              </button>
+            </div>
+          )}
         </div>
       )}
       {screen !== "loading" && (
@@ -1496,10 +1548,10 @@ export default function HuaVsLucaGame() {
                   <FaPlay aria-hidden="true" size={22} /> {copy.startGame}
                 </button>
                 <div className="menu-secondary-row">
-                  <button className="menu-secondary-button endless-button" type="button" onClick={() => openLevelBriefing(LEVELS[0].id, "endless")}>
+                  <button className="menu-secondary-button endless-button" type="button" onClick={() => openEndlessBriefing("main-menu")}>
                     <FaCat aria-hidden="true" size={25} /> {copy.endlessMode}
                   </button>
-                  <button className="menu-secondary-button" type="button" onClick={() => navigateTo("bestiary")}>
+                  <button className="menu-secondary-button" type="button" onClick={() => openBestiary("main-menu")}>
                     <FaBookOpen aria-hidden="true" size={23} /> {copy.bestiary}
                   </button>
                 </div>
@@ -1518,7 +1570,13 @@ export default function HuaVsLucaGame() {
           <header className="screen-topbar level-topbar">
             <BackButton locale={locale} onClick={goToMainMenu} />
             <strong>{copy.chooseLevel}</strong>
-            <span aria-hidden="true" />
+            <button
+              className="level-endless-button"
+              type="button"
+              onClick={() => openEndlessBriefing("level-select")}
+            >
+              <FaCat aria-hidden="true" size={21} /> {copy.endlessMode}
+            </button>
           </header>
 
           <div className="level-board">
@@ -1737,7 +1795,7 @@ export default function HuaVsLucaGame() {
       {screen === "bestiary" && (
         <section className="game-cabinet secondary-page bestiary-page" aria-label={copy.bestiary}>
           <header className="screen-topbar secondary-topbar">
-            <BackButton locale={locale} onClick={goToMainMenu} />
+            <BackButton locale={locale} onClick={goBackFromBestiary} />
             <strong>{copy.bestiary}</strong>
           </header>
           <div className="secondary-content bestiary-modules">
@@ -1939,9 +1997,9 @@ export default function HuaVsLucaGame() {
                 <button
                   className="briefing-close-button"
                   type="button"
-                  onClick={briefingMode === "endless" ? goToMainMenu : goToLevelSelect}
-                  aria-label={briefingMode === "endless" ? copy.backMainMenu : copy.backLevelSelect}
-                  title={briefingMode === "endless" ? copy.backMainMenu : copy.backLevelSelect}
+                  onClick={briefingMode === "endless" ? goBackFromEndless : goToLevelSelect}
+                  aria-label={briefingMode === "endless" && endlessReturnScreen === "main-menu" ? copy.backMainMenu : copy.backLevelSelect}
+                  title={briefingMode === "endless" && endlessReturnScreen === "main-menu" ? copy.backMainMenu : copy.backLevelSelect}
                 >
                   <FaSignOutAlt aria-hidden="true" size={18} />
                 </button>
@@ -2233,7 +2291,8 @@ export default function HuaVsLucaGame() {
                 type="button"
                 onClick={(event) => {
                   event.stopPropagation();
-                  goToLevelSelect();
+                  if (snapshot.mode === "endless") goBackFromEndless();
+                  else goToLevelSelect();
                 }}
                 aria-label={copy.backLevelSelect}
                 title={copy.backLevelSelect}
@@ -2309,9 +2368,9 @@ export default function HuaVsLucaGame() {
                 <h2>{snapshot.mode === "endless" ? copy.endlessOver : copy.homeLost}</h2>
                 <p className="defeat-count"><span>{copy.defeatedCount}</span><strong>{snapshot.defeated}{snapshot.mode === "endless" ? "" : ` / ${activeLevel.totalEnemies}`}</strong><span>{copy.defeatedEnemy}</span></p>
                 <button className="primary-button" type="button" onClick={() => openLevelBriefing(snapshot.levelId, snapshot.mode ?? "level")}><FaRedoAlt aria-hidden="true" size={19} />{copy.retryChallenge}</button>
-                <button className="primary-button is-khaki result-secondary-button" type="button" onClick={snapshot.mode === "endless" ? goToMainMenu : goToLevelSelect}>
-                  {snapshot.mode === "endless" ? <FaHome aria-hidden="true" size={20} /> : <FaSignOutAlt aria-hidden="true" size={19} />}
-                  {snapshot.mode === "endless" ? copy.backMainMenu : copy.backLevelSelect}
+                <button className="primary-button is-khaki result-secondary-button" type="button" onClick={snapshot.mode === "endless" ? goBackFromEndless : goToLevelSelect}>
+                  {snapshot.mode === "endless" && endlessReturnScreen === "main-menu" ? <FaHome aria-hidden="true" size={20} /> : <FaSignOutAlt aria-hidden="true" size={19} />}
+                  {snapshot.mode === "endless" && endlessReturnScreen === "main-menu" ? copy.backMainMenu : copy.backLevelSelect}
                 </button>
               </div>
             </div>

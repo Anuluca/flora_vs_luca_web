@@ -8,6 +8,7 @@ declare module "react-icons/fa" {
   export const FaBookOpen: Icon;
   export const FaCat: Icon;
   export const FaCheck: Icon;
+  export const FaDownload: Icon;
   export const FaFastForward: Icon;
   export const FaGithub: Icon;
   export const FaHistory: Icon;

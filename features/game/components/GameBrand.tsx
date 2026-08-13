@@ -138,7 +138,6 @@ export function MatchupPreview({ level, locale }: { level: Level; locale: Locale
 export function CornerDecorations() {
   return (
     <div className="corner-decorations" aria-hidden="true">
-      <Image className="corner-cat-nest" src={GAME_UI_ASSETS.scratcherHouse} alt="" width={540} height={720} unoptimized />
       <div className="corner-treats">
         {Array.from({ length: 3 }, (_, index) => (
           <Image key={index} src={GAME_UI_ASSETS.treat} alt="" width={236} height={512} unoptimized />
