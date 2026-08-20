@@ -6,6 +6,7 @@ export const UI_COPY = {
   zh: {
     documentTitle: "花花 vs 路卡：Anutrium 网页游戏",
     shareTitle: "花花 vs 路卡",
+    shareDescription: "拖动花花进入跑道，撞飞不断来袭的路卡，帮小花花守住猫窝最后的防线！",
     flora: "花花",
     luca: "路卡",
     back: "返回",
@@ -134,6 +135,7 @@ export const UI_COPY = {
   en: {
     documentTitle: "Flora vs Luca: Free Online Cat Defense Game",
     shareTitle: "Flora vs Luca",
+    shareDescription: "Roll Flora onto the lanes, knock away the incoming Lucas, and defend the cat nest!",
     flora: "FLORA",
     luca: "LUCA",
     back: "Back",

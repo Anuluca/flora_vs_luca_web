@@ -165,11 +165,16 @@ function playLoopingAudio(audio: HTMLAudioElement, volume: number, restart = fal
 }
 
 /** 弹窗音效只播放一次，避免复用循环 BGM 的播放配置。 */
-function playOneShotAudio(audio: HTMLAudioElement, volume: number, restart = false) {
+async function playOneShotAudio(audio: HTMLAudioElement, volume: number, restart = false) {
   audio.loop = false;
   if (restart) audio.currentTime = 0;
   audio.volume = volume;
-  void audio.play().catch(() => undefined);
+  try {
+    await audio.play();
+    return !audio.paused;
+  } catch {
+    return false;
+  }
 }
 
 function stopAndResetAudio(audio: HTMLAudioElement | null) {
@@ -262,6 +267,9 @@ export default function HuaVsLucaGame() {
   const gameBgmGainRef = useRef<GainNode | null>(null);
   const victoryAudioRef = useRef<HTMLAudioElement | null>(null);
   const defeatBgmRef = useRef<HTMLAudioElement | null>(null);
+  const defeatBgmSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const defeatBgmGainRef = useRef<GainNode | null>(null);
+  const defeatStingerPlayedRef = useRef(false);
   const defeatRetryCleanupRef = useRef<(() => void) | null>(null);
   const victoryRetryCleanupRef = useRef<(() => void) | null>(null);
   const starSoundTimersRef = useRef<number[]>([]);
@@ -572,12 +580,82 @@ export default function HuaVsLucaGame() {
     playInstantAudio(sound.src, sound.volumeMultiplier);
   }, [playInstantAudio]);
 
+  /**
+   * 失败 BGM 必须独立确认是否已启动，不能用同时播放的 stinger 结果代替。
+   * 优先复用加载页预解码的缓冲区，媒体元素仅作为兼容性回退。
+   */
+  const playDefeatBgm = useCallback(async () => {
+    if (!soundEnabledRef.current || typeof window === "undefined") return false;
+
+    try {
+      defeatBgmSourceRef.current?.stop();
+    } catch {
+      // 已自然播放结束的 AudioBufferSourceNode 再次 stop 会抛错，可直接忽略。
+    }
+    defeatBgmSourceRef.current = null;
+    defeatBgmGainRef.current = null;
+    stopAndResetAudio(defeatBgmRef.current);
+
+    const buffer = instantAudioBuffersRef.current.get(GAME_AUDIO_URLS.defeatBgm);
+    const AudioContextClass =
+      window.AudioContext
+      || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+
+    if (buffer && AudioContextClass) {
+      const context = !audioContextRef.current || audioContextRef.current.state === "closed"
+        ? new AudioContextClass()
+        : audioContextRef.current;
+      audioContextRef.current = context;
+
+      if (context.state !== "running") {
+        try {
+          await context.resume();
+        } catch {
+          // 继续尝试媒体元素回退；若仍被拦截，会在下一次用户交互时重试。
+        }
+      }
+
+      if (context.state === "running") {
+        try {
+          const source = context.createBufferSource();
+          const gain = context.createGain();
+          source.buffer = buffer;
+          gain.gain.value = clamp(soundVolumeRef.current * 0.4, 0, 1);
+          source.connect(gain).connect(context.destination);
+          source.onended = () => {
+            if (defeatBgmSourceRef.current !== source) return;
+            defeatBgmSourceRef.current = null;
+            defeatBgmGainRef.current = null;
+          };
+          defeatBgmSourceRef.current = source;
+          defeatBgmGainRef.current = gain;
+          source.start();
+          return true;
+        } catch {
+          defeatBgmSourceRef.current = null;
+          defeatBgmGainRef.current = null;
+        }
+      }
+    }
+
+    const audio = defeatBgmRef.current ?? createLoadedAudio(GAME_AUDIO_URLS.defeatBgm);
+    defeatBgmRef.current = audio;
+    return playOneShotAudio(audio, soundVolumeRef.current * 0.4, true);
+  }, [createLoadedAudio]);
+
   const clearStarSoundTimers = useCallback(() => {
     starSoundTimersRef.current.forEach((timer) => window.clearTimeout(timer));
     starSoundTimersRef.current = [];
   }, []);
 
   const stopDefeatBgm = useCallback(() => {
+    try {
+      defeatBgmSourceRef.current?.stop();
+    } catch {
+      // 已结束的缓冲音源无需重复停止。
+    }
+    defeatBgmSourceRef.current = null;
+    defeatBgmGainRef.current = null;
     stopAndResetAudio(defeatBgmRef.current);
   }, []);
 
@@ -731,6 +809,9 @@ export default function HuaVsLucaGame() {
     } else {
       setAudioVolume(gameBgmRef.current, normalizedVolume * GAME_BGM_VOLUME_MULTIPLIER);
     }
+    if (defeatBgmGainRef.current) {
+      defeatBgmGainRef.current.gain.value = normalizedVolume * 0.4;
+    }
     setAudioVolume(defeatBgmRef.current, normalizedVolume * 0.4);
     if (normalizedVolume > 0 && !soundEnabledRef.current) {
       soundEnabledRef.current = true;
@@ -744,16 +825,21 @@ export default function HuaVsLucaGame() {
   }, [connectGameBgmAudioGraph]);
 
   const shareGame = useCallback(async () => {
-    const url = "https://flora-ball.anuluca.com";
+    const url = "https://flora-ball.anuluca.com/";
+    const shareData = {
+      title: copy.shareTitle,
+      text: copy.shareDescription,
+      url,
+    };
     try {
-      if (navigator.share) await navigator.share({ title: copy.shareTitle, url });
-      else await navigator.clipboard.writeText(url);
+      if (navigator.share) await navigator.share(shareData);
+      else await navigator.clipboard.writeText(`${shareData.title}\n${shareData.text}\n${shareData.url}`);
       setShareCompleted(true);
       window.setTimeout(() => setShareCompleted(false), 1600);
     } catch {
       // 用户取消系统分享面板时无需显示错误。
     }
-  }, [copy.shareTitle]);
+  }, [copy.shareDescription, copy.shareTitle]);
 
   const toggleLocale = useCallback(() => {
     setLocale((current) => current === "zh" ? "en" : "zh");
@@ -1430,6 +1516,7 @@ export default function HuaVsLucaGame() {
 
   useEffect(() => {
     if (snapshot.phase !== "defeat") {
+      defeatStingerPlayedRef.current = false;
       stopDefeatBgm();
       return;
     }
@@ -1437,23 +1524,15 @@ export default function HuaVsLucaGame() {
 
     defeatRetryCleanupRef.current?.();
 
-    const attemptPlayback = async () => {
-      // 优先尝试使用已解码缓冲同时播放两段音效
-      const bgmPlayed = await playInstantAudio(GAME_AUDIO_URLS.defeatBgm, 0.4).catch(() => false);
-      const stingerPlayed = await playInstantAudio(GAME_AUDIO_URLS.defeatStinger, 0.125).catch(() => false);
-      if (bgmPlayed && stingerPlayed) return true;
-
-      // 回退：确保至少通过 HTMLAudio 元素触发播放（并尽量播放两段）
-      const bgm = defeatBgmRef.current ?? createLoadedAudio(GAME_AUDIO_URLS.defeatBgm);
-      defeatBgmRef.current = bgm;
-      try { bgm.loop = false; bgm.currentTime = 0; bgm.volume = soundVolumeRef.current * 0.4; await bgm.play(); } catch {}
-      try { const st = createLoadedAudio(GAME_AUDIO_URLS.defeatStinger); st.loop = false; st.currentTime = 0; st.volume = soundVolumeRef.current * 0.125; await st.play(); } catch {}
-      return bgmPlayed || stingerPlayed;
+    let disposed = false;
+    const playStinger = async () => {
+      if (await playInstantAudio(GAME_AUDIO_URLS.defeatStinger, 0.125).catch(() => false)) return;
+      const audio = createLoadedAudio(GAME_AUDIO_URLS.defeatStinger);
+      await playOneShotAudio(audio, soundVolumeRef.current * 0.125, true);
     };
 
-    void attemptPlayback().then((played) => {
-      if (played || !soundEnabledRef.current) return;
-
+    const scheduleBgmRetry = () => {
+      if (disposed || !soundEnabledRef.current || modelRef.current.phase !== "defeat") return;
       let retried = false;
       const cleanup = () => {
         window.removeEventListener("pointerdown", retryOnInteraction, true);
@@ -1464,19 +1543,31 @@ export default function HuaVsLucaGame() {
         if (retried) return;
         retried = true;
         cleanup();
-        void attemptPlayback();
+        void playDefeatBgm().then((played) => {
+          if (!played) scheduleBgmRetry();
+        });
       };
 
       defeatRetryCleanupRef.current = cleanup;
       window.addEventListener("pointerdown", retryOnInteraction, { once: true, capture: true });
       window.addEventListener("touchend", retryOnInteraction, { once: true, capture: true });
+    };
+
+    // stinger 只播放一次；失败 BGM 独立启动，失败时持续等待下一次有效用户交互。
+    if (!defeatStingerPlayedRef.current) {
+      defeatStingerPlayedRef.current = true;
+      void playStinger();
+    }
+    void playDefeatBgm().then((played) => {
+      if (!played) scheduleBgmRetry();
     });
 
     return () => {
+      disposed = true;
       defeatRetryCleanupRef.current?.();
       stopDefeatBgm();
     };
-  }, [createLoadedAudio, playInstantAudio, snapshot.phase, stopDefeatBgm]);
+  }, [createLoadedAudio, playDefeatBgm, playInstantAudio, snapshot.phase, soundEnabled, stopDefeatBgm]);
 
   useEffect(() => () => {
     if (briefingExitTimerRef.current !== null) window.clearTimeout(briefingExitTimerRef.current);

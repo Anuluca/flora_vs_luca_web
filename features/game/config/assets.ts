@@ -28,6 +28,7 @@ export const GAME_INSTANT_AUDIO_URLS: string[] = Array.from(new Set([
   GAME_AUDIO_URLS.catDrop,
   GAME_AUDIO_URLS.victory,
   GAME_AUDIO_URLS.gameStart,
+  GAME_AUDIO_URLS.defeatBgm,
   GAME_AUDIO_URLS.defeatStinger,
   ...Object.values(ENEMY_TYPES).flatMap((enemy) => (
     enemy.soundEffects?.death ? [enemy.soundEffects.death.src] : []

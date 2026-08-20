@@ -33,13 +33,13 @@ export function createSeoMetadata(title: string, description: string, path: stri
       url: path,
       siteName: SITE_NAME,
       locale: "zh_CN",
-      images: [{ url: OG_IMAGE, width: 1200, height: 630, alt: `${SITE_NAME}网页游戏画面` }],
+      images: [{ url: OG_IMAGE, width: 1200, height: 630, type: "image/png", alt: `${SITE_NAME}网页游戏画面` }],
     },
     twitter: {
       card: "summary_large_image",
       title: `${title} | ${SITE_NAME}`,
       description,
-      images: [OG_IMAGE],
+      images: [{ url: OG_IMAGE, alt: `${SITE_NAME}网页游戏画面` }],
     },
   };
 }

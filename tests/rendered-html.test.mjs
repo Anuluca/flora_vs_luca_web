@@ -384,6 +384,10 @@ test("keeps the game configuration and project boundaries verifiable", async () 
   assert.match(globals, /\.level-topbar \.level-endless-button\s*\{[\s\S]*?background:\s*#e23456/);
   assert.doesNotMatch(gameBrand, /className="corner-cat-nest"/);
   assert.match(game, /className="site-utility-button language-switch-button"/);
+  assert.match(game, /navigator\.share\(shareData\)/);
+  assert.match(game, /text:\s*copy\.shareDescription/);
+  assert.match(game, /navigator\.clipboard\.writeText\(`\$\{shareData\.title\}\\n\$\{shareData\.text\}\\n\$\{shareData\.url\}`\)/);
+  assert.match(i18n, /shareDescription: "拖动花花进入跑道/);
   assert.match(game, /copy\.restartQuestion/);
   assert.match(game, /requestConfirmation\("level-select"\)/);
   assert.match(game, /confirmationActionRef\.current !== null/);
