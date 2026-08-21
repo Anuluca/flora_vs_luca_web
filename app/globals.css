@@ -3708,6 +3708,10 @@ button:focus-visible {
   background: rgba(212, 194, 163, .26);
 }
 
+.changelog-entry + .changelog-entry {
+  margin-top: 14px;
+}
+
 .changelog-entry header {
   display: flex;
   align-items: baseline;
@@ -8376,6 +8380,7 @@ body.is-dragging-cat * {
 }
 
 .victory-overlay .result-card > button,
+.victory-overlay .victory-result-actions .primary-button,
 .defeat-overlay .result-card > button {
   min-width: 220px;
   min-height: 62px;
@@ -8384,9 +8389,29 @@ body.is-dragging-cat * {
 }
 
 .victory-overlay .result-card > button svg,
+.victory-overlay .victory-result-actions .primary-button svg,
 .defeat-overlay .result-card > button svg {
   width: 22px;
   height: 22px;
+}
+
+.victory-result-actions {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+}
+
+.victory-result-actions .primary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+}
+
+.victory-result-actions .result-secondary-button {
+  margin-left: 0;
 }
 
 .defeat-overlay .result-card {

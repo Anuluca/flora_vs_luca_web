@@ -1606,6 +1606,10 @@ export default function HuaVsLucaGame() {
   }, []);
 
   const activeLevel = getLevel(snapshot.levelId);
+  const activeLevelIndex = LEVELS.findIndex((level) => level.id === snapshot.levelId);
+  const nextLevel = snapshot.mode === "level" && activeLevelIndex >= 0
+    ? LEVELS[activeLevelIndex + 1]
+    : undefined;
   const liveEnemies = snapshot.enemies.filter((enemy) => enemy.spawned && !enemy.defeated);
   // 顶部进度表示路卡出场进程，与击杀结果无关；红温区间也复用同一生成进度。
   const spawnedProgress = snapshot.mode === "endless"
@@ -1970,6 +1974,13 @@ export default function HuaVsLucaGame() {
           <div className="secondary-content changelog-content">
             <div className="changelog-sheet">
               <h1>{copy.changelog}</h1>
+              <article className="changelog-entry">
+                <header>
+                  <strong>v0.1_demo</strong>
+                  <time dateTime="2026-08-20">2026/08/20</time>
+                </header>
+                <p>{copy.changelogExperienceCopy}</p>
+              </article>
               <article className="changelog-entry">
                 <header>
                   <strong>v0.1_demo</strong>
@@ -2517,7 +2528,14 @@ export default function HuaVsLucaGame() {
                   <span>{copy.shots}<strong>{snapshot.shots}</strong></span>
                 </div>
                 <button className="primary-button" type="button" onClick={() => startGame(snapshot.levelId, "level")}><FaRedoAlt aria-hidden="true" size={19} />{copy.playAgain}</button>
-                <button className="primary-button is-khaki result-secondary-button" type="button" onClick={goToLevelSelect}><FaSignOutAlt aria-hidden="true" size={19} />{copy.backLevelSelect}</button>
+                <div className="victory-result-actions">
+                  <button className="primary-button is-khaki result-secondary-button" type="button" onClick={goToLevelSelect}><FaSignOutAlt aria-hidden="true" size={19} />{copy.backLevelSelect}</button>
+                  {nextLevel && (
+                    <button className="primary-button result-next-button" type="button" onClick={() => openLevelBriefing(nextLevel.id, "level")}>
+                      <FaFastForward aria-hidden="true" size={19} />{copy.nextLevel}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           )}
